@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telón — Gestor de Producción Teatral</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--negro:#0a0a0a;--rojo:#c0392b;--rojo-claro:#e74c3c;--dorado:#c9a84c;--gris-oscuro:#1a1a1a;--gris-medio:#2a2a2a;--gris-borde:#333;--texto:#e8e0d0;--texto-suave:#8a8070;--verde:#27ae60;--amarillo:#f39c12;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--negro);color:var(--texto);font-family:'Crimson Pro',Georgia,serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:0.4;}
+
+/* BIENVENIDA */
+#screen-bienvenida{position:fixed;inset:0;background:var(--negro);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
+.bienvenida-logo{font-family:'Playfair Display',serif;font-size:72px;font-weight:900;font-style:italic;color:var(--texto);letter-spacing:-3px;line-height:1;margin-bottom:8px;}
+.bienvenida-tagline{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--rojo);margin-bottom:40px;}
+.bienvenida-linea{width:60px;height:1px;background:var(--dorado);margin:0 auto 40px;}
+.bienvenida-desc{font-size:19px;line-height:1.8;color:var(--texto-suave);max-width:560px;margin-bottom:48px;}
+.bienvenida-pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:700px;margin-bottom:48px;}
+.bienvenida-paso{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:20px;text-align:left;}
+.bienvenida-paso-num{font-family:'Playfair Display',serif;font-size:32px;color:var(--rojo);font-weight:700;line-height:1;margin-bottom:8px;}
+.bienvenida-paso-titulo{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dorado);margin-bottom:6px;}
+.bienvenida-paso-desc{font-size:13px;color:var(--texto-suave);line-height:1.5;}
+.bienvenida-cta{background:var(--rojo);border:none;color:white;padding:14px 40px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:background 0.2s;}
+.bienvenida-cta:hover{background:var(--rojo-claro);}
+.bienvenida-credito{font-family:'DM Mono',monospace;font-size:8px;color:var(--gris-borde);letter-spacing:2px;margin-top:24px;}
+
+/* LOGIN */
+#screen-login{position:fixed;inset:0;background:var(--negro);z-index:400;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;}
+.login-box{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:40px;width:100%;max-width:400px;}
+.login-titulo{font-family:'Playfair Display',serif;font-size:28px;font-style:italic;margin-bottom:4px;}
+.login-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--texto-suave);margin-bottom:28px;}
+.login-tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid var(--gris-borde);}
+.login-tab{padding:8px 20px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;margin-bottom:-1px;}
+.login-tab.activo{color:var(--rojo);border-bottom-color:var(--rojo);}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);margin-bottom:5px;}
+.login-field input{background:var(--gris-medio);border:1px solid var(--gris-borde);color:var(--texto);padding:10px 12px;font-family:'Crimson Pro',serif;font-size:15px;width:100%;}
+.login-field input:focus{outline:none;border-color:var(--rojo);}
+.btn-login{background:var(--rojo);border:none;color:white;padding:12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;cursor:pointer;width:100%;margin-bottom:12px;transition:background 0.2s;}
+.btn-login:hover{background:var(--rojo-claro);}
+.btn-google{background:transparent;border:1px solid var(--gris-borde);color:var(--texto-suave);padding:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;width:100%;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-google:hover{border-color:var(--dorado);color:var(--dorado);}
+.login-error{font-family:'DM Mono',monospace;font-size:10px;color:var(--rojo);margin-top:8px;display:none;}
+.login-skip{font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);text-align:center;margin-top:16px;cursor:pointer;text-decoration:underline;}
+.login-skip:hover{color:var(--texto);}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:var(--gris-oscuro);border-right:1px solid var(--gris-borde);display:flex;flex-direction:column;z-index:100;}
+.sidebar-logo{padding:20px 24px 16px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;gap:12px;cursor:pointer;transition:background 0.2s;}
+.sidebar-logo:hover{background:rgba(255,255,255,0.02);}
+.logo-img{width:36px;height:36px;border-radius:2px;object-fit:cover;display:none;}
+.logo-img.visible{display:block;}
+.logo-placeholder{width:36px;height:36px;background:var(--gris-medio);border:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);flex-shrink:0;}
+.logo-texto h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;font-style:italic;color:var(--texto);letter-spacing:-1px;line-height:1;}
+.logo-texto span{display:block;font-family:'DM Mono',monospace;font-size:8px;color:var(--rojo);letter-spacing:3px;text-transform:uppercase;margin-top:3px;}
+.sidebar-user{padding:8px 24px;border-bottom:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:space-between;}
+.sidebar-user-email{font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-logout{background:none;border:none;color:var(--gris-borde);cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;transition:color 0.2s;}
+.btn-logout:hover{color:var(--rojo);}
+.sidebar-proyectos{flex:1;overflow-y:auto;padding:16px 0;}
+.sidebar-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--texto-suave);padding:0 24px 12px;}
+.proyecto-item{padding:10px 24px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;color:var(--texto-suave);font-family:'Crimson Pro',serif;}
+.proyecto-item:hover{color:var(--texto);background:rgba(255,255,255,0.03);}
+.proyecto-item.activo{color:var(--texto);border-left-color:var(--rojo);background:rgba(192,57,43,0.08);}
+.proyecto-item .proj-nombre{font-weight:600;font-size:15px;}
+.proyecto-item .proj-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);margin-top:2px;}
+.proyecto-item .proj-progreso{font-family:'DM Mono',monospace;font-size:10px;color:var(--rojo);margin-top:2px;}
+.sidebar-perfil-btn{margin:0 16px 8px;padding:8px;background:transparent;border:1px solid var(--gris-borde);color:var(--texto-suave);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;text-align:center;}
+.sidebar-perfil-btn:hover{border-color:var(--dorado);color:var(--dorado);}
+.btn-nuevo-proyecto{margin:0 16px 20px;padding:10px;background:transparent;border:1px solid var(--gris-borde);color:var(--texto-suave);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;text-align:center;}
+.btn-nuevo-proyecto:hover{border-color:var(--rojo);color:var(--rojo);}
+
+/* MAIN */
+.main{margin-left:260px;min-height:100vh;display:flex;flex-direction:column;}
+.tabs{display:flex;border-bottom:1px solid var(--gris-borde);padding:0 32px;background:var(--gris-oscuro);position:sticky;top:0;z-index:50;overflow-x:auto;}
+.tab{padding:16px 18px 14px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;margin-bottom:-1px;white-space:nowrap;}
+.tab:hover{color:var(--texto);}
+.tab.activo{color:var(--rojo);border-bottom-color:var(--rojo);}
+.contenido{padding:36px;flex:1;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.panel{display:none;}
+.panel.activo{display:block;}
+.proyecto-header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;}
+.proyecto-header h2{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;font-style:italic;line-height:1;color:var(--texto);}
+.proyecto-header h2 small{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);font-style:normal;font-weight:400;margin-bottom:6px;}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-accion{background:none;border:1px solid var(--gris-borde);color:var(--texto-suave);cursor:pointer;font-size:10px;padding:6px 14px;font-family:'DM Mono',monospace;transition:all 0.2s;letter-spacing:1px;}
+.btn-accion:hover{border-color:var(--rojo);color:var(--rojo);}
+.ficha-resumen{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:14px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:20px;}
+.ficha-chip{font-size:13px;}
+.ficha-chip b{display:block;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--texto-suave);margin-bottom:2px;}
+
+/* VTABS */
+.vtabs{display:flex;gap:0;border-bottom:1px solid var(--gris-borde);margin-bottom:20px;overflow-x:auto;}
+.vtab{padding:9px 16px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;}
+.vtab:hover{color:var(--texto);}
+.vtab.activo{color:var(--dorado);border-bottom-color:var(--dorado);}
+.vpanel{display:none;}
+.vpanel.activo{display:block;}
+
+/* CARDS & INPUTS */
+.card{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:22px;margin-bottom:14px;}
+.card-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--texto-suave);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.field-group{margin-bottom:12px;}
+.field-group label{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);margin-bottom:5px;}
+input[type="text"],input[type="number"],input[type="email"],input[type="password"],select,textarea{background:var(--gris-medio);border:1px solid var(--gris-borde);color:var(--texto);padding:7px 10px;font-family:'Crimson Pro',serif;font-size:14px;width:100%;transition:border-color 0.2s;-moz-appearance:textfield;}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--rojo);}
+select option{background:var(--gris-medio);}
+
+/* MONEDA */
+.moneda-selector{display:flex;gap:5px;}
+.moneda-btn{padding:4px 10px;font-family:'DM Mono',monospace;font-size:9px;border:1px solid var(--gris-borde);background:transparent;color:var(--texto-suave);cursor:pointer;transition:all 0.2s;}
+.moneda-btn.activo{border-color:var(--dorado);color:var(--dorado);}
+
+/* AYUDA */
+.ayuda-btn{background:none;border:1px solid var(--gris-borde);color:var(--texto-suave);width:15px;height:15px;border-radius:50%;font-size:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;transition:all 0.2s;flex-shrink:0;}
+.ayuda-btn:hover{border-color:var(--dorado);color:var(--dorado);}
+.tooltip-overlay{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:40px;background:rgba(0,0,0,0.7);}
+.tooltip-overlay.visible{display:flex;}
+.tooltip-box{background:var(--gris-oscuro);border:1px solid var(--dorado);padding:22px 26px;max-width:400px;position:relative;}
+.tooltip-titulo{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--dorado);margin-bottom:10px;text-transform:uppercase;}
+.tooltip-texto{font-size:15px;line-height:1.7;color:var(--texto);}
+.tooltip-cerrar{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--texto-suave);cursor:pointer;font-size:20px;}
+
+/* TABLAS PRESUPUESTO */
+.presu-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px;}
+.presu-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);padding:7px 7px;text-align:left;border-bottom:1px solid var(--gris-borde);background:var(--negro);}
+.presu-table th.num{text-align:right;}
+.presu-table td{padding:3px 3px;border-bottom:1px solid rgba(51,51,51,0.4);vertical-align:middle;}
+.presu-table td.num{text-align:right;font-family:'DM Mono',monospace;font-size:11px;}
+.presu-table td input{background:transparent;border:none;color:var(--texto);font-family:'Crimson Pro',serif;font-size:13px;width:100%;padding:4px 5px;}
+.presu-table td input[type="number"]{font-family:'DM Mono',monospace;font-size:11px;text-align:right;}
+.presu-table td input:focus{outline:none;background:rgba(255,255,255,0.04);}
+.presu-table td select{background:transparent;border:none;color:var(--texto);font-size:12px;font-family:'DM Mono',monospace;padding:4px;}
+.cat-header{background:rgba(192,57,43,0.06);border-left:3px solid var(--rojo);}
+.cat-header td{padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--rojo);}
+.subtotal-row td{font-family:'DM Mono',monospace;font-size:10px;color:var(--dorado);background:rgba(0,0,0,0.2);padding:5px 7px;text-align:right;}
+
+/* RESULTADO */
+.resultado-card{background:var(--gris-medio);border:1px solid var(--gris-borde);padding:22px;position:relative;overflow:hidden;margin-bottom:14px;}
+.resultado-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--rojo);}
+.resultado-numero{font-family:'Playfair Display',serif;font-size:56px;font-weight:900;color:var(--rojo);line-height:1;margin:8px 0 4px;}
+.resultado-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);text-transform:uppercase;}
+.resultado-detalle{margin-top:14px;padding-top:14px;border-top:1px solid var(--gris-borde);display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.detalle-item{font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);}
+.detalle-item strong{display:block;font-size:14px;color:var(--dorado);margin-bottom:2px;font-family:'Crimson Pro',serif;font-weight:600;}
+
+/* HITOS */
+.hitos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hito-card{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:16px;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;}
+.hito-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.hito-card.pendiente::after{background:var(--gris-borde);}
+.hito-card.en-proceso::after{background:var(--amarillo);}
+.hito-card.listo::after{background:var(--verde);}
+.hito-card:hover{border-color:var(--rojo);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.hito-nombre{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--texto);}
+.hito-footer{display:flex;align-items:center;justify-content:space-between;}
+.badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 7px;}
+.badge.pendiente{color:var(--texto-suave);background:rgba(255,255,255,0.05);}
+.badge.en-proceso{color:var(--amarillo);background:rgba(243,156,18,0.1);}
+.badge.listo{color:var(--verde);background:rgba(39,174,96,0.1);}
+.hito-ia-btn{background:none;border:none;color:var(--texto-suave);cursor:pointer;font-size:11px;transition:color 0.2s;}
+.hito-ia-btn:hover{color:var(--dorado);}
+.hito-dot{width:6px;height:6px;background:var(--dorado);border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle;}
+.progreso-bar-wrap{margin-bottom:24px;background:var(--gris-medio);border:1px solid var(--gris-borde);padding:16px 20px;display:flex;align-items:center;gap:20px;}
+.progreso-bar{flex:1;height:3px;background:var(--gris-borde);}
+.progreso-fill{height:100%;background:linear-gradient(90deg,var(--rojo),var(--dorado));transition:width 0.6s ease;}
+.progreso-texto{font-family:'DM Mono',monospace;font-size:10px;color:var(--texto-suave);white-space:nowrap;}
+
+/* TRACKER COMPRAS */
+.tracker-table{width:100%;border-collapse:collapse;font-size:12px;}
+.tracker-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--texto-suave);padding:6px 6px;text-align:left;border-bottom:1px solid var(--gris-borde);background:var(--negro);white-space:nowrap;}
+.tracker-table td{padding:3px 3px;border-bottom:1px solid rgba(51,51,51,0.3);vertical-align:middle;}
+.tracker-table td input,.tracker-table td select{background:transparent;border:none;color:var(--texto);font-family:'Crimson Pro',serif;font-size:12px;width:100%;padding:3px 5px;}
+.tracker-table td input[type="number"]{font-family:'DM Mono',monospace;font-size:11px;}
+.tracker-table td input:focus,.tracker-table td select:focus{outline:none;background:rgba(255,255,255,0.04);}
+.tracker-saldo{display:flex;gap:20px;padding:10px 8px;font-family:'DM Mono',monospace;font-size:11px;border-top:1px solid var(--gris-borde);}
+.tracker-saldo span{color:var(--texto-suave);}
+.tracker-saldo strong{color:var(--dorado);}
+
+/* CASH FLOW */
+.cf-table{width:100%;border-collapse:collapse;font-size:12px;}
+.cf-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--texto-suave);padding:6px 8px;text-align:right;border-bottom:1px solid var(--gris-borde);background:var(--negro);}
+.cf-table th:first-child{text-align:left;}
+.cf-table td{padding:4px 8px;border-bottom:1px solid rgba(51,51,51,0.3);font-family:'DM Mono',monospace;font-size:11px;text-align:right;}
+.cf-table td:first-child{text-align:left;font-family:'Crimson Pro',serif;font-size:13px;}
+.cf-table td input{background:transparent;border:none;color:var(--texto);font-family:'DM Mono',monospace;font-size:11px;width:80px;text-align:right;padding:2px 4px;}
+.cf-table td input:focus{outline:none;background:rgba(255,255,255,0.06);}
+.cf-seccion{background:rgba(192,57,43,0.06);}
+.cf-seccion td{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--rojo);padding:8px 8px;}
+.cf-total td{background:var(--negro);font-weight:bold;border-top:2px solid var(--gris-borde);}
+.cf-acum td{color:var(--dorado);}
+.cf-positivo{color:var(--verde) !important;}
+.cf-negativo{color:var(--rojo-claro) !important;}
+
+/* GIRAS */
+.giras-table{width:100%;border-collapse:collapse;font-size:13px;}
+.giras-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--texto-suave);padding:7px 7px;text-align:left;border-bottom:1px solid var(--gris-borde);background:var(--negro);white-space:nowrap;}
+.giras-table td{padding:3px 3px;border-bottom:1px solid rgba(51,51,51,0.3);vertical-align:middle;}
+.giras-table td input,.giras-table td select{background:transparent;border:none;color:var(--texto);font-family:'Crimson Pro',serif;font-size:13px;width:100%;padding:4px 5px;}
+.giras-table td input:focus,.giras-table td select:focus{outline:none;background:rgba(255,255,255,0.04);}
+.estado-badge{display:inline-block;padding:2px 8px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;}
+.estado-confirmado{color:var(--verde);background:rgba(39,174,96,0.1);}
+.estado-prereserva{color:var(--amarillo);background:rgba(243,156,18,0.1);}
+.estado-pendiente{color:var(--texto-suave);background:rgba(255,255,255,0.05);}
+
+/* CONV */
+.conv-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.conv-grid{display:flex;flex-direction:column;gap:10px;}
+.conv-card{background:var(--gris-oscuro);border:1px solid var(--gris-borde);padding:14px 18px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:center;}
+.conv-field label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--texto-suave);display:block;margin-bottom:3px;}
+.btn-buscar-conv{background:var(--rojo);border:none;color:white;padding:8px 18px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;transition:background 0.2s;}
+.btn-buscar-conv:hover{background:var(--rojo-claro);}
+.btn-buscar-conv:disabled{background:var(--gris-borde);cursor:wait;}
+.conv-ia-resultado{background:var(--gris-medio);border:1px solid var(--gris-borde);border-left:3px solid var(--dorado);padding:18px;margin-bottom:18px;font-size:15px;line-height:1.8;white-space:pre-wrap;display:none;}
+.conv-ia-resultado.visible{display:block;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;padding:24px;}
+.modal-overlay.visible{display:flex;}
+.modal{background:var(--gris-oscuro);border:1px solid var(--gris-borde);width:100%;max-width:660px;max-height:90vh;display:flex;flex-direction:column;animation:modalIn 0.25s ease;}
+@keyframes modalIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.modal-header h3{font-family:'Playfair Display',serif;font-size:20px;font-style:italic;}
+.modal-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--rojo);margin-bottom:2px;}
+.btn-cerrar{background:none;border:none;color:var(--texto-suave);cursor:pointer;font-size:22px;line-height:1;transition:color 0.2s;}
+.btn-cerrar:hover{color:var(--texto);}
+.modal-body{padding:22px;flex:1;overflow-y:auto;}
+.modal-estado{display:flex;gap:8px;margin-bottom:16px;}
+.estado-btn{padding:5px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--gris-borde);background:transparent;color:var(--texto-suave);cursor:pointer;transition:all 0.2s;}
+.estado-btn.pendiente.activo{border-color:var(--gris-borde);color:var(--texto);background:rgba(255,255,255,0.05);}
+.estado-btn.en-proceso.activo{border-color:var(--amarillo);color:var(--amarillo);background:rgba(243,156,18,0.1);}
+.estado-btn.listo.activo{border-color:var(--verde);color:var(--verde);background:rgba(39,174,96,0.1);}
+.section-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--texto-suave);margin-bottom:8px;}
+.editor-wrap{margin-bottom:14px;display:none;}
+.editor-wrap.visible{display:block;}
+.editor-toolbar{display:flex;gap:4px;margin-bottom:5px;}
+.editor-btn{background:var(--gris-medio);border:1px solid var(--gris-borde);color:var(--texto-suave);padding:3px 9px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;transition:all 0.2s;}
+.editor-btn:hover{color:var(--texto);}
+.editor-content{width:100%;min-height:110px;background:var(--negro);border:1px solid var(--gris-borde);color:var(--texto);padding:10px;font-family:'Crimson Pro',serif;font-size:15px;line-height:1.7;overflow-y:auto;}
+.editor-content:focus{outline:none;border-color:var(--rojo);}
+.archivos-lista{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.archivo-item{display:flex;align-items:center;gap:8px;background:var(--gris-medio);border:1px solid var(--gris-borde);padding:6px 10px;font-family:'DM Mono',monospace;font-size:10px;}
+.archivo-nombre{flex:1;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.archivo-descargar{background:none;border:none;color:var(--dorado);cursor:pointer;font-size:12px;padding:2px 5px;}
+.archivo-eliminar{background:none;border:none;color:var(--gris-borde);cursor:pointer;font-size:14px;padding:2px 4px;transition:color 0.2s;}
+.archivo-eliminar:hover{color:var(--rojo);}
+.upload-btn{display:inline-block;background:none;border:1px dashed var(--gris-borde);color:var(--texto-suave);padding:6px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.upload-btn:hover{border-color:var(--dorado);color:var(--dorado);}
+.modal-notas{width:100%;min-height:60px;background:var(--gris-medio);border:1px solid var(--gris-borde);color:var(--texto);padding:10px;font-family:'Crimson Pro',serif;font-size:15px;resize:vertical;margin-bottom:14px;}
+.modal-notas:focus{outline:none;border-color:var(--rojo);}
+.ia-section{border-top:1px solid var(--gris-borde);padding-top:16px;}
+.ia-section-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--dorado);margin-bottom:10px;}
+.ia-prompt-row{display:flex;gap:8px;margin-bottom:12px;}
+.ia-prompt-row input{flex:1;}
+.btn-ia{background:var(--rojo);border:none;color:white;padding:8px 16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:background 0.2s;white-space:nowrap;}
+.btn-ia:hover{background:var(--rojo-claro);}
+.btn-ia:disabled{background:var(--gris-borde);cursor:wait;}
+.ia-respuesta{background:var(--negro);border:1px solid var(--gris-borde);border-left:3px solid var(--dorado);padding:12px;font-size:14px;line-height:1.7;min-height:50px;color:var(--texto);white-space:pre-wrap;}
+.ia-respuesta.vacia{color:var(--texto-suave);font-style:italic;}
+.ia-sugerencias{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.sugerencia-btn{background:none;border:1px solid var(--gris-borde);color:var(--texto-suave);padding:3px 9px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;transition:all 0.2s;}
+.sugerencia-btn:hover{border-color:var(--dorado);color:var(--dorado);}
+.perfil-foto-wrap{display:flex;align-items:center;gap:16px;margin-bottom:16px;}
+.perfil-foto-preview{width:56px;height:56px;border:1px solid var(--gris-borde);object-fit:cover;display:none;border-radius:2px;}
+.perfil-foto-preview.visible{display:block;}
+.perfil-foto-placeholder{width:56px;height:56px;background:var(--gris-medio);border:1px solid var(--gris-borde);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);text-align:center;}
+.fase-row{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:end;}
+.empty-state{text-align:center;padding:70px 40px;color:var(--texto-suave);}
+.empty-state h3{font-family:'Playfair Display',serif;font-size:30px;font-style:italic;margin-bottom:10px;color:var(--texto);}
+.empty-state p{font-size:15px;margin-bottom:20px;}
+.btn-primario{background:var(--rojo);border:none;color:white;padding:10px 26px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;transition:background 0.2s;}
+.btn-primario:hover{background:var(--rojo-claro);}
+.btn-secundario{background:transparent;border:1px solid var(--gris-borde);color:var(--texto-suave);padding:10px 26px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.btn-secundario:hover{border-color:var(--dorado);color:var(--dorado);}
+.mb12{margin-bottom:12px;}
+.divider{border:none;border-top:1px solid var(--gris-borde);margin:14px 0;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.btn-eliminar{background:none;border:none;color:var(--gris-borde);cursor:pointer;font-size:16px;line-height:1;transition:color 0.2s;padding:3px;}
+.btn-eliminar:hover{color:var(--rojo);}
+.btn-agregar{background:none;border:1px dashed var(--gris-borde);color:var(--texto-suave);padding:6px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;margin-top:6px;}
+.btn-agregar:hover{border-color:var(--rojo);color:var(--rojo);}
+.restante-row{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.reparto-table{width:100%;border-collapse:collapse;font-size:13px;}
+.reparto-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--texto-suave);padding:6px 8px;text-align:left;border-bottom:1px solid var(--gris-borde);}
+.reparto-table td{padding:7px 8px;border-bottom:1px solid rgba(51,51,51,0.4);font-family:'DM Mono',monospace;font-size:11px;}
+.saving-indicator{position:fixed;bottom:16px;right:16px;background:var(--verde);color:white;padding:6px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;z-index:9998;display:none;animation:fadeIn 0.2s ease;}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--negro)}::-webkit-scrollbar-thumb{background:var(--gris-borde)}
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,0.2);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:4px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="saving-indicator" class="saving-indicator">✓ GUARDADO</div>
+<div class="tooltip-overlay" id="tooltip-overlay" onclick="cerrarTooltip()">
+  <div class="tooltip-box" onclick="event.stopPropagation()">
+    <button class="tooltip-cerrar" onclick="cerrarTooltip()">×</button>
+    <div class="tooltip-titulo" id="tooltip-titulo"></div>
+    <div class="tooltip-texto" id="tooltip-texto"></div>
+  </div>
+</div>
+
+<!-- BIENVENIDA -->
+<div id="screen-bienvenida">
+  <div class="bienvenida-logo">Telón</div>
+  <div class="bienvenida-tagline">Gestión de Producción Teatral</div>
+  <div class="bienvenida-linea"></div>
+  <div class="bienvenida-desc">
+    La herramienta que digitaliza la <strong>Metodología Praxis</strong> — una arquitectura de gestión para que cada producción sea viable, sostenible y no dependa de la suerte.
+  </div>
+  <div class="bienvenida-pasos">
+    <div class="bienvenida-paso">
+      <div class="bienvenida-paso-num">01</div>
+      <div class="bienvenida-paso-titulo">Viabilidad</div>
+      <div class="bienvenida-paso-desc">Calculá si tu proyecto es viable antes de arrancar. Presupuesto, co-producción, financiación y amortización.</div>
+    </div>
+    <div class="bienvenida-paso">
+      <div class="bienvenida-paso-num">02</div>
+      <div class="bienvenida-paso-titulo">Hitos</div>
+      <div class="bienvenida-paso-desc">Seguimiento de los 21 hitos clave desde la idea hasta la última función. Con IA integrada en cada uno.</div>
+    </div>
+    <div class="bienvenida-paso">
+      <div class="bienvenida-paso-num">03</div>
+      <div class="bienvenida-paso-titulo">Convocatorias</div>
+      <div class="bienvenida-paso-desc">Registrá y buscá festivales, ferias y convocatorias activas según el perfil de tu obra.</div>
+    </div>
+  </div>
+  <button class="bienvenida-cta" onclick="irALogin()">Comenzar</button>
+  <div class="bienvenida-credito">BASADO EN LA METODOLOGÍA PRAXIS · KARINA GARANTIVÁ</div>
+</div>
+
+<!-- LOGIN -->
+<div id="screen-login">
+  <div class="login-box">
+    <div class="login-titulo">Acceder</div>
+    <div class="login-sub">TELÓN — GESTIÓN TEATRAL</div>
+    <div class="login-tabs">
+      <div class="login-tab activo" onclick="cambiarLoginTab('login',this)">Iniciar sesión</div>
+      <div class="login-tab" onclick="cambiarLoginTab('registro',this)">Registrarse</div>
+    </div>
+    <div id="login-form">
+      <div class="login-field"><label>Email</label><input type="email" id="login-email" placeholder="tu@email.com"></div>
+      <div class="login-field"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')hacerLogin()"></div>
+      <div class="login-error" id="login-error"></div>
+      <button class="btn-login" onclick="hacerLogin()">Entrar</button>
+      <button class="btn-google" onclick="loginGoogle()">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continuar con Google
+      </button>
+    </div>
+    <div id="registro-form" style="display:none;">
+      <div class="login-field"><label>Email</label><input type="email" id="reg-email" placeholder="tu@email.com"></div>
+      <div class="login-field"><label>Contraseña</label><input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')hacerRegistro()"></div>
+      <div class="login-error" id="reg-error"></div>
+      <button class="btn-login" onclick="hacerRegistro()">Crear cuenta</button>
+    </div>
+    <div class="login-skip" onclick="usarSinCuenta()">Usar sin cuenta (datos locales)</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar" style="display:none;">
+  <div class="sidebar-logo" onclick="abrirPerfil()">
+    <div class="logo-placeholder" id="logo-placeholder">Logo</div>
+    <img class="logo-img" id="logo-img" src="" alt="logo">
+    <div class="logo-texto"><h1 id="sidebar-compania">Telón</h1><span>Gestión Teatral</span></div>
+  </div>
+  <div class="sidebar-user" id="sidebar-user" style="display:none;">
+    <span class="sidebar-user-email" id="sidebar-user-email"></span>
+    <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+  </div>
+  <div class="sidebar-proyectos">
+    <div class="sidebar-label">Producciones</div>
+    <div id="lista-proyectos"></div>
+  </div>
+  <button class="sidebar-perfil-btn" onclick="abrirPerfil()">✎ Perfil de compañía</button>
+  <button class="btn-nuevo-proyecto" onclick="abrirModalNuevo()">+ Nueva obra</button>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main-app" style="display:none;">
+  <div id="empty-state" class="contenido">
+    <div class="empty-state">
+      <h3>Bienvenido a Telón</h3>
+      <p>Configurá el perfil de tu compañía o creá tu primera producción.</p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button class="btn-secundario" onclick="abrirPerfil()">Perfil de compañía</button>
+        <button class="btn-primario" onclick="abrirModalNuevo()">Nueva obra</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-shell" style="display:none;flex-direction:column;flex:1;">
+    <div class="tabs">
+      <div class="tab activo" onclick="cambiarTab('viabilidad',this)">Viabilidad</div>
+      <div class="tab" onclick="cambiarTab('hitos',this)">Hitos</div>
+      <div class="tab" onclick="cambiarTab('giras',this)">Giras</div>
+      <div class="tab" onclick="cambiarTab('tracker',this)">Compras</div>
+      <div class="tab" onclick="cambiarTab('cashflow',this)">Cash Flow</div>
+      <div class="tab" onclick="cambiarTab('convocatorias',this)">Convocatorias</div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:0 8px;flex-shrink:0;">
+        <button onclick="exportarExcel()" title="Exportar a Excel" style="background:none;border:1px solid var(--gris-borde);color:var(--texto-suave);padding:5px 12px;font-family:DM Mono,monospace;font-size:9px;letter-spacing:1px;cursor:pointer;white-space:nowrap;">↓ XLS</button>
+        <button onclick="exportarPDF()" title="Exportar a PDF" style="background:none;border:1px solid var(--gris-borde);color:var(--texto-suave);padding:5px 12px;font-family:DM Mono,monospace;font-size:9px;letter-spacing:1px;cursor:pointer;white-space:nowrap;">↓ PDF</button>
+      </div>
+    </div>
+    <div class="contenido">
+
+      <!-- VIABILIDAD -->
+      <div id="panel-viabilidad" class="panel activo">
+        <div class="proyecto-header">
+          <h2><small>Producción activa</small><span id="nombre-proyecto-header">—</span></h2>
+          <div class="header-actions">
+            <div class="moneda-selector">
+              <button class="moneda-btn activo" onclick="setMoneda('€',this)">€ EUR</button>
+              <button class="moneda-btn" onclick="setMoneda('$',this)">$ ARS</button>
+              <button class="moneda-btn" onclick="setMoneda('USD',this)">USD</button>
+              <button class="moneda-btn" onclick="setMoneda('£',this)">£ GBP</button>
+            </div>
+            <button class="btn-accion" onclick="editarObra()">✎ Editar ficha</button>
+          </div>
+        </div>
+        <div class="ficha-resumen" id="ficha-resumen"></div>
+        <div class="vtabs">
+          <div class="vtab activo" onclick="cambiarVtab('presupuesto',this)">1. Presupuesto</div>
+          <div class="vtab" onclick="cambiarVtab('coproduccion',this)">2. Co-producción</div>
+          <div class="vtab" onclick="cambiarVtab('financiacion',this)">3. Financiación</div>
+          <div class="vtab" onclick="cambiarVtab('amortizacion',this)">4. Amortización</div>
+          <div class="vtab" onclick="cambiarVtab('bolo',this)">5. Gastos de bolo</div>
+          <div class="vtab" onclick="cambiarVtab('previsiones',this)">6. Previsiones</div>
+        </div>
+
+        <!-- 1. PRESUPUESTO -->
+        <div id="vpanel-presupuesto" class="vpanel activo">
+          <div class="card">
+            <div class="card-title">Gastos de Producción / Estreno <button class="ayuda-btn" onclick="mostrarAyuda('Presupuesto de producción','¿Cuánto cuesta levantar el telón? Incluye todos los gastos organizados por categorías. Con base imponible, IRPF e IVA en columnas separadas. Los cálculos de amortización se hacen SIN IVA.')">?</button></div>
+            <table class="presu-table"><thead><tr><th style="width:30%">Concepto</th><th style="width:18%">Base imponible</th><th style="width:9%">IRPF</th><th style="width:9%">IVA</th><th class="num" style="width:14%">Total</th><th style="width:8%">Pago</th><th style="width:12%"></th></tr></thead><tbody id="presu-body"></tbody></table>
+            <button class="btn-agregar" onclick="agregarFilaPresupuesto()">+ Agregar ítem</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Valor de Trabajo <button class="ayuda-btn" onclick="mostrarAyuda('Valor de Trabajo','Aportaciones no monetarias valoradas en dinero: escribir la obra, producir, diseñar. Entra en el presupuesto porque es algo a recuperar con la explotación o subvenciones.')">?</button></div>
+            <div id="vtrabajo-lista"></div>
+            <button class="btn-agregar" onclick="agregarVTrabajo()">+ Agregar persona/compañía</button>
+            <div style="display:flex;justify-content:flex-end;padding:8px 0;font-family:'DM Mono',monospace;font-size:11px;color:var(--texto-suave);">Total Valor de Trabajo: <strong style="color:var(--dorado);margin-left:8px;" id="vtrabajo-total">—</strong></div>
+          </div>
+          <div class="card" style="background:var(--negro);">
+            <div class="grid-3">
+              <div><div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--texto-suave);margin-bottom:4px;">PRE-TOTAL</div><div style="font-family:'Playfair Display',serif;font-size:26px;color:var(--texto);" id="presu-pretotal">—</div></div>
+              <div><div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--texto-suave);margin-bottom:4px;">IMPREVISTOS <button class="ayuda-btn" onclick="mostrarAyuda('Imprevistos','Porcentaje sobre el pre-total para gastos no previstos. Se recomienda entre 5% y 15%.')">?</button></div><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="pct-imprevistos" value="10" min="0" max="50" onchange="recalcularPresupuesto()" style="width:60px;"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--texto-suave);">%</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--dorado);" id="presu-imprevistos-monto">—</span></div></div>
+              <div><div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--rojo);margin-bottom:4px;">TOTAL PRODUCCIÓN</div><div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--rojo);" id="presu-total">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. COPRODUCCION -->
+        <div id="vpanel-coproduccion" class="vpanel">
+          <div class="card"><div class="card-title">Co-productores <button class="ayuda-btn" onclick="mostrarAyuda('Co-producción','Quién aporta qué — en dinero y en trabajo. Los porcentajes definen la participación en amortización y beneficios de cada función.')">?</button></div><div id="coprod-lista"></div><button class="btn-agregar" onclick="agregarCoproductor()">+ Agregar co-productor</button></div>
+          <div class="card" style="background:var(--negro);"><div class="card-title">Resumen</div><div id="coprod-resumen"></div><div class="restante-row" id="coprod-restante-row"><div><div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--rojo);margin-bottom:4px;">RESTANTE A FINANCIAR <button class="ayuda-btn" onclick="mostrarAyuda('Restante','Diferencia entre el Total de Producción y lo aportado. Este es el dinero que falta conseguir.')">?</button></div><div style="font-family:'Playfair Display',serif;font-size:28px;color:var(--rojo);font-weight:700;" id="coprod-restante">—</div></div><div style="font-family:'Playfair Display',serif;font-size:26px;color:var(--rojo);font-weight:700;" id="coprod-restante-pct">—</div></div></div>
+        </div>
+
+        <!-- 3. FINANCIACION -->
+        <div id="vpanel-financiacion" class="vpanel">
+          <div class="card"><div class="card-title">Plan de Financiación <button class="ayuda-btn" onclick="mostrarAyuda('Plan de Financiación','¿De dónde sale el dinero que falta? Las subvenciones son sin IVA. El porcentaje de ventas es lo que esperás recuperar con las funciones.')">?</button></div><div id="financ-lista"></div><button class="btn-agregar" onclick="agregarFinanciacion()">+ Agregar fuente</button><div style="display:flex;gap:20px;justify-content:flex-end;padding:10px 0;font-family:'DM Mono',monospace;font-size:11px;color:var(--texto-suave);">Total financiado: <strong style="color:var(--dorado);margin-left:6px;" id="financ-total">—</strong><span style="margin-left:16px;">Sin cubrir: <strong style="color:var(--rojo);margin-left:6px;" id="financ-faltante">—</strong></span></div></div>
+        </div>
+
+        <!-- 4. AMORTIZACION -->
+        <div id="vpanel-amortizacion" class="vpanel">
+          <div class="grid-2">
+            <div>
+              <div class="card">
+                <div class="card-title">Modelo de ingreso <button class="ayuda-btn" onclick="mostrarAyuda('Ingreso por función','El ingreso bruto menos los gastos de bolo da el resultado neto. Ese neto es lo que se destina a amortizar la inversión — no el ingreso bruto.')">?</button></div>
+                <div style="display:flex;gap:5px;margin-bottom:14px;">
+                  <button class="moneda-btn activo" id="modelo-taquilla-btn" onclick="setModeloAmort('taquilla',this)" style="flex:1;">Taquilla</button>
+                  <button class="moneda-btn" id="modelo-cache-btn" onclick="setModeloAmort('cache',this)" style="flex:1;">Caché</button>
+                  <button class="moneda-btn" id="modelo-garantia-btn" onclick="setModeloAmort('garantia',this)" style="flex:1;">Garantía+%</button>
+                </div>
+                <div id="amort-config-taquilla"><div class="grid-2"><div class="field-group"><label>Capacidad sala</label><input type="number" id="amort-cap" value="100" onchange="calcularAmortizacion()"></div><div class="field-group"><label>% Ocupación</label><input type="number" id="amort-ocup" value="70" onchange="calcularAmortizacion()"></div></div><div class="field-group"><label>Precio entrada (sin IVA) <button class="ayuda-btn" onclick="mostrarAyuda('Precio sin IVA','Los cálculos de amortización se hacen sobre el precio sin IVA.')">?</button></label><input type="number" id="amort-precio" value="15" onchange="calcularAmortizacion()"></div></div>
+                <div id="amort-config-cache" style="display:none;"><div class="field-group"><label>Caché por función (sin IVA)</label><input type="number" id="amort-cache" value="3000" onchange="calcularAmortizacion()"></div></div>
+                <div id="amort-config-garantia" style="display:none;"><div class="grid-2"><div class="field-group"><label>Garantía mínima</label><input type="number" id="amort-gar-min" value="2000" onchange="calcularAmortizacion()"></div><div class="field-group"><label>% taquilla adicional</label><input type="number" id="amort-gar-pct" value="60" onchange="calcularAmortizacion()"></div></div><div class="grid-2"><div class="field-group"><label>Capacidad sala</label><input type="number" id="amort-gar-cap" value="100" onchange="calcularAmortizacion()"></div><div class="field-group"><label>Precio (sin IVA)</label><input type="number" id="amort-gar-precio" value="15" onchange="calcularAmortizacion()"></div></div><div class="field-group"><label>% Ocupación</label><input type="number" id="amort-gar-ocup" value="70" onchange="calcularAmortizacion()"></div></div>
+              </div>
+              <div class="card"><div class="card-title">Gastos de bolo promedio <button class="ayuda-btn" onclick="mostrarAyuda('Gastos de bolo','Se restan del ingreso bruto para obtener el resultado neto real. Podés usar el promedio si los bolos varían.')">?</button></div><div class="field-group"><label>Gastos estimados por función</label><input type="number" id="amort-gastos-bolo" value="500" onchange="calcularAmortizacion()"></div><div class="field-group"><label>% Reserva / fondo</label><input type="number" id="amort-reserva" value="10" min="0" max="100" onchange="calcularAmortizacion()"></div></div>
+            </div>
+            <div>
+              <div class="resultado-card"><div class="resultado-label">Funciones necesarias</div><div class="resultado-numero" id="amort-funciones">—</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave)">para recuperar la inversión</div><div class="resultado-detalle"><div class="detalle-item"><strong id="amort-ingreso-bruto">—</strong>Ingreso bruto/fn</div><div class="detalle-item"><strong id="amort-neto-fn">—</strong>Neto/función</div><div class="detalle-item"><strong id="amort-reserva-total">—</strong>A reserva total</div></div></div>
+              <div class="card" style="background:var(--negro);"><div class="card-title" style="margin-bottom:10px;">Reparto por función</div><table class="reparto-table"><thead><tr><th>Co-productor</th><th>%</th><th>Amort./fn</th></tr></thead><tbody id="reparto-body"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. BOLO -->
+        <div id="vpanel-bolo" class="vpanel">
+          <div class="card"><div class="card-title">Gastos por Función / Bolo <button class="ayuda-btn" onclick="mostrarAyuda('Gastos de bolo','Registro detallado de cada función. Ingreso bruto − gastos = resultado neto, que se reparte según los porcentajes de co-producción.')">?</button></div><div id="bolo-lista"></div><button class="btn-agregar" onclick="agregarBolo()">+ Nueva función/bolo</button></div>
+        </div>
+
+        <!-- 6. PREVISIONES -->
+        <div id="vpanel-previsiones" class="vpanel">
+          <div class="card"><div class="card-title">Previsiones — Presupuestado vs Real <button class="ayuda-btn" onclick="mostrarAyuda('Previsiones','Seguimiento de lo que presupuestaste vs lo que realmente gastaste. El saldo disponible muestra cuánto queda de cada partida.')">?</button></div><div id="previsiones-lista"></div><button class="btn-agregar" onclick="agregarPrevision()">+ Agregar partida</button><div class="tracker-saldo" style="margin-top:10px;"><span>Total presupuestado: <strong id="prev-total-presup">—</strong></span><span>Total real: <strong id="prev-total-real">—</strong></span><span>Saldo: <strong id="prev-saldo">—</strong></span></div></div>
+        </div>
+      </div>
+
+      <!-- HITOS -->
+      <div id="panel-hitos" class="panel">
+        <div class="proyecto-header" style="margin-bottom:20px;"><h2><small>Hitos de producción</small><span id="nombre-proyecto-hitos">—</span></h2></div>
+        <div class="progreso-bar-wrap"><div class="progreso-bar"><div class="progreso-fill" id="barra-progreso" style="width:0%"></div></div><div class="progreso-texto" id="texto-progreso">0 / 21 completados</div></div>
+        <div class="hitos-grid" id="hitos-grid"></div>
+      </div>
+
+      <!-- GIRAS -->
+      <div id="panel-giras" class="panel">
+        <div class="conv-header"><h2 style="font-family:'Playfair Display',serif;font-size:34px;font-weight:700;font-style:italic;"><small style="display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);font-style:normal;margin-bottom:5px;">Seguimiento</small>Giras y Funciones</h2><button class="btn-accion" onclick="agregarGira()">+ Nueva función</button></div>
+        <div class="card"><table class="giras-table"><thead><tr><th>Localidad</th><th>Fecha</th><th>Teatro</th><th>Contrato</th><th>Nº fn</th><th>Ingresos</th><th>Distribuidora</th><th>Butacas</th><th>P. entrada</th><th>Caché</th><th>Recaudación</th><th></th></tr></thead><tbody id="giras-body"></tbody></table><button class="btn-agregar" onclick="agregarGira()" style="margin-top:8px;">+ Nueva función</button></div>
+      </div>
+
+      <!-- TRACKER COMPRAS -->
+      <div id="panel-tracker" class="panel">
+        <div class="conv-header"><h2 style="font-family:'Playfair Display',serif;font-size:34px;font-weight:700;font-style:italic;"><small style="display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);font-style:normal;margin-bottom:5px;">Registro</small>Compras</h2></div>
+        <div class="vtabs">
+          <div class="vtab activo" onclick="cambiarTrackerTab('vestuario',this)">Vestuario</div>
+          <div class="vtab" onclick="cambiarTrackerTab('escenografia',this)">Escenografía</div>
+          <div class="vtab" onclick="cambiarTrackerTab('comunicacion',this)">Comunicación</div>
+          <div class="vtab" onclick="cambiarTrackerTab('otros-compras',this)">Otros</div>
+        </div>
+        <div id="tracker-vestuario" class="vpanel activo"><div class="card"><div class="card-title">Vestuario</div><div id="tracker-vestuario-contenido"></div><button class="btn-agregar" onclick="agregarCompra('vestuario')">+ Agregar ítem</button><div class="tracker-saldo"><span>Presupuestado: <strong id="trk-vest-presup">—</strong></span><span>Real: <strong id="trk-vest-real">—</strong></span><span>Saldo: <strong id="trk-vest-saldo">—</strong></span></div></div></div>
+        <div id="tracker-escenografia" class="vpanel"><div class="card"><div class="card-title">Escenografía</div><div id="tracker-escenografia-contenido"></div><button class="btn-agregar" onclick="agregarCompra('escenografia')">+ Agregar ítem</button><div class="tracker-saldo"><span>Presupuestado: <strong id="trk-escen-presup">—</strong></span><span>Real: <strong id="trk-escen-real">—</strong></span><span>Saldo: <strong id="trk-escen-saldo">—</strong></span></div></div></div>
+        <div id="tracker-comunicacion" class="vpanel"><div class="card"><div class="card-title">Comunicación</div><div id="tracker-comunicacion-contenido"></div><button class="btn-agregar" onclick="agregarCompra('comunicacion')">+ Agregar ítem</button><div class="tracker-saldo"><span>Presupuestado: <strong id="trk-com-presup">—</strong></span><span>Real: <strong id="trk-com-real">—</strong></span><span>Saldo: <strong id="trk-com-saldo">—</strong></span></div></div></div>
+        <div id="tracker-otros-compras" class="vpanel"><div class="card"><div class="card-title">Otros</div><div id="tracker-otros-compras-contenido"></div><button class="btn-agregar" onclick="agregarCompra('otros-compras')">+ Agregar ítem</button><div class="tracker-saldo"><span>Presupuestado: <strong id="trk-otros-presup">—</strong></span><span>Real: <strong id="trk-otros-real">—</strong></span><span>Saldo: <strong id="trk-otros-saldo">—</strong></span></div></div></div>
+      </div>
+
+      <!-- CASH FLOW -->
+      <div id="panel-cashflow" class="panel">
+        <div class="conv-header"><h2 style="font-family:'Playfair Display',serif;font-size:34px;font-weight:700;font-style:italic;"><small style="display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);font-style:normal;margin-bottom:5px;">Previsión mensual</small>Cash Flow</h2></div>
+        <div class="card" style="overflow-x:auto;"><table class="cf-table" id="cf-table"></table></div>
+      </div>
+
+      <!-- CONVOCATORIAS -->
+      <div id="panel-convocatorias" class="panel">
+        <div class="conv-header"><h2 style="font-family:'Playfair Display',serif;font-size:34px;font-weight:700;font-style:italic;"><small style="display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--texto-suave);font-style:normal;margin-bottom:5px;">Seguimiento</small>Convocatorias</h2><div style="display:flex;gap:10px;"><button class="btn-buscar-conv" id="btn-buscar-conv" onclick="buscarConvocatorias()">✦ Buscar con IA</button><button class="btn-accion" onclick="agregarConvocatoria()">+ Nueva</button></div></div>
+        <div id="conv-ia-resultado" class="conv-ia-resultado"></div>
+        <div class="conv-grid" id="conv-grid"></div>
+        <div id="conv-empty" style="text-align:center;padding:60px;color:var(--texto-suave);font-style:italic;display:none;">No hay convocatorias cargadas. Agregá una o buscá con IA.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HITO -->
+<div class="modal-overlay" id="modal-hito">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header"><div><div class="modal-badge">HITO DE PRODUCCIÓN</div><h3 id="modal-hito-nombre">—</h3></div><button class="btn-cerrar" onclick="cerrarModal('modal-hito')">×</button></div>
+    <div class="modal-body">
+      <div class="modal-estado"><button class="estado-btn pendiente" onclick="setEstado('pendiente')">Pendiente</button><button class="estado-btn en-proceso" onclick="setEstado('en-proceso')">En proceso</button><button class="estado-btn listo" onclick="setEstado('listo')">Listo ✓</button></div>
+      <div class="editor-wrap" id="editor-wrap"><div class="section-label" style="margin-bottom:6px;">✦ Editor de texto</div><div class="editor-toolbar"><button class="editor-btn" onclick="fmtTexto('bold')"><b>N</b></button><button class="editor-btn" onclick="fmtTexto('italic')"><i>K</i></button><button class="editor-btn" onclick="fmtTexto('insertUnorderedList')">— Lista</button><button class="editor-btn" onclick="exportarTexto(event)">↓ Copiar</button></div><div class="editor-content" id="editor-content" contenteditable="true" oninput="guardarEditor()"></div></div>
+      <div style="margin-bottom:12px;"><div class="section-label" style="margin-bottom:6px;">Archivos y links</div><div class="archivos-lista" id="archivos-lista"></div><div id="links-lista"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"><label class="upload-btn">↑ Subir archivo<input type="file" style="display:none;" multiple onchange="subirArchivos(this)"></label><button class="upload-btn" onclick="agregarLink()" style="cursor:pointer;">🔗 Agregar link</button></div></div>
+      <label style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--texto-suave);display:block;margin-bottom:5px;">Notas</label>
+      <textarea class="modal-notas" id="modal-notas" placeholder="Notas..." oninput="guardarNota()"></textarea>
+      <div class="ia-section"><div class="ia-section-label">✦ Asistente IA</div><div class="ia-sugerencias" id="ia-sugerencias"></div><div class="ia-prompt-row"><input type="text" id="ia-prompt" placeholder="Preguntale a Claude sobre este hito..." onkeydown="if(event.key==='Enter') consultarIA()"><button class="btn-ia" id="btn-ia" onclick="consultarIA()">Consultar</button></div><div class="ia-respuesta vacia" id="ia-respuesta">La IA te ayudará a desarrollar este hito.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA OBRA -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header"><h3>Nueva producción</h3><button class="btn-cerrar" onclick="cerrarModal('modal-nuevo')">×</button></div>
+    <div class="modal-body">
+      <div class="field-group mb12"><label>Título *</label><input type="text" id="nuevo-nombre" placeholder="Ej: El hombre de la arena"></div>
+      <div class="grid-3 mb12"><div class="field-group"><label>Género</label><select id="nuevo-genero"><option value="">—</option><option>Drama</option><option>Comedia</option><option>Tragicomedia</option><option>Teatro musical</option><option>Danza-teatro</option><option>Teatro infantil</option><option>Unipersonal</option><option>Performance</option><option>Otro</option></select></div><div class="field-group"><label>Formato</label><select id="nuevo-formato"><option value="">—</option><option>Sala convencional</option><option>Site-specific</option><option>Calle / exterior</option><option>Gira</option><option>Festival</option><option>Otro</option></select></div><div class="field-group"><label>Duración (min)</label><input type="number" id="nuevo-duracion" placeholder="90" min="1"></div></div>
+      <div class="grid-2 mb12"><div class="field-group"><label>Público</label><select id="nuevo-publico"><option value="">—</option><option>Familiar</option><option>Adulto</option><option>Infantil</option><option>Juvenil</option><option>Todo público</option></select></div><div class="field-group"><label>Procedencia</label><input type="text" id="nuevo-procedencia" placeholder="Ej: Buenos Aires, Murcia..."></div></div>
+      <div class="field-group mb12"><label>Fase</label><div class="fase-row"><select id="nuevo-fase-tipo" onchange="toggleFase('nuevo')"><option value="produccion">En producción</option><option value="gira">En gira</option></select><div class="field-group" style="margin:0;"><label>Fecha estreno / inicio</label><input type="text" id="nuevo-fase-fecha" placeholder="Ej: marzo 2026"></div><div class="field-group" id="nuevo-fase-lugar-wrap" style="margin:0;display:none;"><label>Lugar de estreno</label><input type="text" id="nuevo-fase-lugar"></div></div></div>
+      <button class="btn-primario" onclick="crearProyecto()" style="width:100%;">Crear obra</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR OBRA -->
+<div class="modal-overlay" id="modal-editar-obra">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header"><h3>Editar ficha de obra</h3><button class="btn-cerrar" onclick="cerrarModal('modal-editar-obra')">×</button></div>
+    <div class="modal-body">
+      <div class="field-group mb12"><label>Título *</label><input type="text" id="edit-nombre"></div>
+      <div class="grid-3 mb12"><div class="field-group"><label>Género</label><select id="edit-genero"><option value="">—</option><option>Drama</option><option>Comedia</option><option>Tragicomedia</option><option>Teatro musical</option><option>Danza-teatro</option><option>Teatro infantil</option><option>Unipersonal</option><option>Performance</option><option>Otro</option></select></div><div class="field-group"><label>Formato</label><select id="edit-formato"><option value="">—</option><option>Sala convencional</option><option>Site-specific</option><option>Calle / exterior</option><option>Gira</option><option>Festival</option><option>Otro</option></select></div><div class="field-group"><label>Duración (min)</label><input type="number" id="edit-duracion" min="1"></div></div>
+      <div class="grid-2 mb12"><div class="field-group"><label>Público</label><select id="edit-publico"><option value="">—</option><option>Familiar</option><option>Adulto</option><option>Infantil</option><option>Juvenil</option><option>Todo público</option></select></div><div class="field-group"><label>Procedencia</label><input type="text" id="edit-procedencia"></div></div>
+      <div class="field-group mb12"><label>Fase</label><div class="fase-row"><select id="edit-fase-tipo" onchange="toggleFase('edit')"><option value="produccion">En producción</option><option value="gira">En gira</option></select><div class="field-group" style="margin:0;"><label>Fecha</label><input type="text" id="edit-fase-fecha"></div><div class="field-group" id="edit-fase-lugar-wrap" style="margin:0;display:none;"><label>Lugar</label><input type="text" id="edit-fase-lugar"></div></div></div>
+      <button class="btn-primario" onclick="guardarEdicionObra()" style="width:100%;">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERFIL -->
+<div class="modal-overlay" id="modal-perfil">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header"><h3>Perfil de compañía</h3><button class="btn-cerrar" onclick="cerrarModal('modal-perfil')">×</button></div>
+    <div class="modal-body">
+      <div class="perfil-foto-wrap"><div class="perfil-foto-placeholder" id="perfil-placeholder">Logo</div><img class="perfil-foto-preview" id="perfil-preview" src="" alt=""><div><label class="upload-btn">↑ Subir logo<input type="file" accept="image/*" style="display:none;" onchange="subirLogo(this)"></label></div></div>
+      <div class="grid-2 mb12"><div class="field-group"><label>Nombre de la compañía</label><input type="text" id="perfil-compania"></div><div class="field-group"><label>Titular</label><input type="text" id="perfil-titular"></div></div>
+      <div class="field-group mb12"><label>Descripción</label><textarea id="perfil-descripcion" style="min-height:60px;"></textarea></div>
+      <div class="field-group mb12"><label>Trayectoria</label><textarea id="perfil-trayectoria" style="min-height:60px;"></textarea></div>
+      <div class="field-group mb12"><label>Objetivos globales</label><textarea id="perfil-objetivos" style="min-height:60px;"></textarea></div>
+      <button class="btn-primario" onclick="guardarPerfil()" style="width:100%;">Guardar perfil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── FIREBASE CONFIG ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAVxYJ9HRWjNyY50N64bMvcVsky",
+  authDomain: "telon-app.firebaseapp.com",
+  databaseURL: "https://telon-app-default-rtdb.firebaseio.com/",
+  projectId: "telon-app",
+  storageBucket: "telon-app.firebasestorage.app",
+  messagingSenderId: "1054547456345",
+  appId: "1:1054547456345:web:2620ca450c163"
+};
+
+let firebaseApp, auth, db, currentUser = null, useCloud = false;
+
+try {
+  firebaseApp = firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.database();
+  auth.getRedirectResult().then(result => {
+    if (result && result.user) {
+      currentUser = result.user;
+      useCloud = true;
+      document.getElementById('screen-login').style.display = 'none';
+      document.getElementById('sidebar-user').style.display = 'flex';
+      document.getElementById('sidebar-user-email').textContent = result.user.email || 'Google';
+      cargarDatosNube();
+    }
+  }).catch(e => console.log('Redirect error:', e));
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      useCloud = true;
+      document.getElementById('sidebar-user').style.display = 'flex';
+      document.getElementById('sidebar-user-email').textContent = user.email || 'Google';
+      if (!document.getElementById('app-shell').style.display || document.getElementById('app-shell').style.display === 'none') {
+        cargarDatosNube();
+      }
+    }
+  });
+} catch(e) { console.log('Firebase no configurado, usando local'); }
+
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+const HITOS_DEFAULT=["Predossier/Dossier","Presupuestos","Calendarios","Objetivos de la producción","Mínimo viable","Texto","Equipo","Moodboard","Fotos","Cartel","Diseño de vestuario","Diseño de escenografía","Diseño sonoro","Alianzas","Sponsors/Ayudas","Calendario RRSS","Press Kit","Landing page","Plan de distribución","Plan de Marketing","Control de gasto"];
+const HITOS_EDITOR=["Predossier/Dossier","Texto","Press Kit","Plan de distribución","Plan de Marketing","Objetivos de la producción","Mínimo viable"];
+const CATS_PRESUPUESTO=['Personal','Materiales','Comunicación / Publicidad','Derechos artísticos','Diseño gráfico','Gestión y producción','Otros'];
+const CATS_BOLO=['Personal','Material','Viajes y dietas','Otros'];
+const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const CF_INGRESOS=['Taquilla / Bolos','Patrocinadores','Subvenciones','Formaciones / Talleres','Otros ingresos'];
+const CF_GASTOS=['Personal','Material escénico','Viajes y dietas','Alquileres de sala','Marketing','Gestión','Otros gastos'];
+const SUGS={"Predossier/Dossier":["¿Qué debe incluir un dossier teatral?","Ayudame a armar la estructura"],"Presupuestos":["¿Cómo estructurar un presupuesto teatral?","Listá los costos típicos"],"Calendarios":["¿Cómo planificar el calendario de ensayos?"],"Objetivos de la producción":["¿Cómo definir objetivos para teatro?"],"Mínimo viable":["¿Qué es el mínimo viable en teatro?"],"Texto":["¿Cómo estructurar un guion teatral?","Ayudame con la sinopsis"],"Equipo":["¿Qué roles son esenciales?"],"Moodboard":["¿Cómo crear un moodboard efectivo?"],"Fotos":["¿Qué fotos necesita una producción?"],"Cartel":["¿Qué elementos tiene un buen cartel teatral?"],"Diseño de vestuario":["¿Cómo organizar el diseño de vestuario?"],"Diseño de escenografía":["¿Qué incluye el rider técnico?"],"Diseño sonoro":["¿Qué necesito para el diseño sonoro?"],"Alianzas":["¿Cómo conseguir aliados estratégicos?"],"Sponsors/Ayudas":["¿Cómo presentar el proyecto a sponsors?"],"Calendario RRSS":["¿Cómo armar un calendario de redes?"],"Press Kit":["¿Qué incluye un press kit teatral?","Ayudame a redactar el texto de prensa"],"Landing page":["¿Qué secciones debe tener la landing?"],"Plan de distribución":["¿Cómo distribuir una obra teatral?"],"Plan de Marketing":["¿Cómo armar el plan de marketing?"],"Control de gasto":["¿Cómo llevar el control de gastos?"]};
+
+let proyectos=[], perfil={}, proyectoActivo=null, hitoActivo=null, monedaActiva='€', modeloAmort='taquilla';
+
+function guardar() {
+  localStorage.setItem('telon-v4', JSON.stringify(proyectos));
+  localStorage.setItem('telon-perfil', JSON.stringify(perfil));
+  if (useCloud && currentUser) guardarNube();
+  mostrarGuardado();
+}
+
+function mostrarGuardado() {
+  const el = document.getElementById('saving-indicator');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 1500);
+}
+
+async function guardarNube() {
+  if (!db || !currentUser) return;
+  try {
+    await db.ref('usuarios/' + currentUser.uid).set({
+      proyectos: JSON.stringify(proyectos),
+      perfil: JSON.stringify(perfil),
+      updatedAt: new Date().toISOString()
+    });
+  } catch(e) { console.log('Error guardando en nube:', e); }
+}
+
+async function cargarDatosNube() {
+  if (!db || !currentUser) return;
+  try {
+    const snapshot = await db.ref('usuarios/' + currentUser.uid).get();
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      if (data.proyectos) proyectos = JSON.parse(data.proyectos);
+      if (data.perfil) perfil = JSON.parse(data.perfil);
+      localStorage.setItem('telon-v4', data.proyectos || '[]');
+      localStorage.setItem('telon-perfil', data.perfil || '{}');
+    }
+  } catch(e) { console.log('Error cargando nube:', e); }
+  iniciarApp();
+}
+
+const fmt = n => monedaActiva + parseFloat(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ── BIENVENIDA / LOGIN ────────────────────────────────────────────────────────
+function irALogin() {
+  document.getElementById('screen-bienvenida').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+}
+
+function cambiarLoginTab(tab, el) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('activo'));
+  el.classList.add('activo');
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registro-form').style.display = tab === 'registro' ? 'block' : 'none';
+}
+
+async function hacerLogin() {
+  if (!auth) { usarSinCuenta(); return; }
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    document.getElementById('screen-login').style.display = 'none';
+    mostrarApp();
+  } catch(e) {
+    errEl.textContent = 'Email o contraseña incorrectos.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function hacerRegistro() {
+  if (!auth) { usarSinCuenta(); return; }
+  const email = document.getElementById('reg-email').value;
+  const pass = document.getElementById('reg-pass').value;
+  const errEl = document.getElementById('reg-error');
+  try {
+    await auth.createUserWithEmailAndPassword(email, pass);
+    document.getElementById('screen-login').style.display = 'none';
+    mostrarApp();
+  } catch(e) {
+    errEl.textContent = 'Error al crear cuenta. Verificá los datos.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function loginGoogle() {
+  if (!auth) { usarSinCuenta(); return; }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithRedirect(provider);
+  } catch(e) { console.log('Error Google login:', e); usarSinCuenta(); }
+}
+
+function usarSinCuenta() {
+  document.getElementById('screen-login').style.display = 'none';
+  proyectos = JSON.parse(localStorage.getItem('telon-v4') || '[]');
+  perfil = JSON.parse(localStorage.getItem('telon-perfil') || '{}');
+  mostrarApp();
+}
+
+async function cerrarSesion() {
+  if (auth) await auth.signOut();
+  currentUser = null; useCloud = false;
+  location.reload();
+}
+
+function mostrarApp() {
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'flex';
+  actualizarSidebar();
+  renderSidebar();
+  if (proyectos.length) activarProyecto(proyectos[0].id);
+}
+
+function iniciarApp() {
+  mostrarApp();
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+function mostrarAyuda(t, txt) { document.getElementById('tooltip-titulo').textContent = t; document.getElementById('tooltip-texto').textContent = txt; document.getElementById('tooltip-overlay').classList.add('visible'); }
+function cerrarTooltip() { document.getElementById('tooltip-overlay').classList.remove('visible'); }
+
+// ── PERFIL ────────────────────────────────────────────────────────────────────
+function abrirPerfil() {
+  ['compania','titular','descripcion','trayectoria','objetivos'].forEach(f => { const el = document.getElementById('perfil-'+f); if(el) el.value = perfil[f] || ''; });
+  if (perfil.logo) { document.getElementById('perfil-preview').src = perfil.logo; document.getElementById('perfil-preview').classList.add('visible'); document.getElementById('perfil-placeholder').style.display = 'none'; }
+  document.getElementById('modal-perfil').classList.add('visible');
+}
+function subirLogo(input) { const f = input.files[0]; if(!f) return; const r = new FileReader(); r.onload = e => { perfil.logo = e.target.result; document.getElementById('perfil-preview').src = e.target.result; document.getElementById('perfil-preview').classList.add('visible'); document.getElementById('perfil-placeholder').style.display = 'none'; actualizarSidebar(); }; r.readAsDataURL(f); }
+function guardarPerfil() { ['compania','titular','descripcion','trayectoria','objetivos'].forEach(f => { perfil[f] = document.getElementById('perfil-'+f)?.value.trim() || ''; }); guardar(); actualizarSidebar(); cerrarModal('modal-perfil'); }
+function actualizarSidebar() { document.getElementById('sidebar-compania').textContent = perfil.compania || 'Telón'; if (perfil.logo) { document.getElementById('logo-img').src = perfil.logo; document.getElementById('logo-img').classList.add('visible'); document.getElementById('logo-placeholder').style.display = 'none'; } }
+
+// ── PROYECTOS ─────────────────────────────────────────────────────────────────
+function toggleFase(pre) { document.getElementById(pre+'-fase-lugar-wrap').style.display = document.getElementById(pre+'-fase-tipo').value === 'gira' ? 'block' : 'none'; }
+
+function crearProyecto() {
+  const nombre = document.getElementById('nuevo-nombre').value.trim(); if (!nombre) return;
+  const p = {
+    id: Date.now(), nombre,
+    genero: document.getElementById('nuevo-genero').value, formato: document.getElementById('nuevo-formato').value,
+    duracion: document.getElementById('nuevo-duracion').value, publico: document.getElementById('nuevo-publico').value,
+    procedencia: document.getElementById('nuevo-procedencia').value, faseTipo: document.getElementById('nuevo-fase-tipo').value,
+    faseFecha: document.getElementById('nuevo-fase-fecha').value, faseLugar: document.getElementById('nuevo-fase-lugar').value,
+    hitos: HITOS_DEFAULT.map(h => ({nombre:h, estado:'pendiente', notas:'', textoEditor:'', archivos:[]})),
+    presupuesto: {items:[], pctImprevistos:10}, vtrabajo: [], coproductores: [], financiacion: [], bolos: [],
+    previsiones: [], giras: [], compras: {vestuario:[], escenografia:[], comunicacion:[], 'otros-compras':[]},
+    cashflow: {}, moneda:'€', modeloAmort:'taquilla',
+    amortConfig: {cap:100,ocup:70,precio:15,cache:3000,garMin:2000,garPct:60,garCap:100,garPrecio:15,garOcup:70,gastosBolo:500,reserva:10},
+    convocatorias: []
+  };
+  proyectos.push(p); guardar();
+  cerrarModal('modal-nuevo');
+  ['nuevo-nombre','nuevo-genero','nuevo-formato','nuevo-duracion','nuevo-publico','nuevo-procedencia','nuevo-fase-fecha','nuevo-fase-lugar'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  renderSidebar(); activarProyecto(p.id);
+}
+
+function activarProyecto(id) {
+  proyectoActivo = proyectos.find(p => p.id === id); if (!proyectoActivo) return;
+  // Migrar datos viejos
+  const defaults = {presupuesto:{items:[],pctImprevistos:10},vtrabajo:[],coproductores:[],financiacion:[],bolos:[],previsiones:[],giras:[],compras:{vestuario:[],escenografia:[],comunicacion:[],'otros-compras':[]},cashflow:{},convocatorias:[],amortConfig:{cap:100,ocup:70,precio:15,cache:3000,garMin:2000,garPct:60,garCap:100,garPrecio:15,garOcup:70,gastosBolo:500,reserva:10}};
+  Object.keys(defaults).forEach(k => { if (!proyectoActivo[k]) proyectoActivo[k] = defaults[k]; });
+  if (!proyectoActivo.compras['otros-compras']) proyectoActivo.compras['otros-compras'] = [];
+  monedaActiva = proyectoActivo.moneda || '€';
+  modeloAmort = proyectoActivo.modeloAmort || 'taquilla';
+  document.querySelectorAll('.moneda-btn').forEach(b => b.classList.toggle('activo', b.textContent.trim().startsWith(monedaActiva)));
+  renderSidebar();
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+  document.getElementById('nombre-proyecto-header').textContent = proyectoActivo.nombre;
+  document.getElementById('nombre-proyecto-hitos').textContent = proyectoActivo.nombre;
+  renderFichaResumen(); renderPresupuesto(); renderVTrabajo(); renderCoproductores(); renderFinanciacion();
+  renderBolos(); renderPrevisiones(); cargarAmortConfig(); calcularAmortizacion();
+  renderHitos(); renderGiras(); renderTodasCompras(); renderCashFlow(); renderConvocatorias();
+}
+
+function renderFichaResumen() {
+  if (!proyectoActivo) return;
+  const p = proyectoActivo;
+  const chips = [p.genero&&`<div class="ficha-chip"><b>GÉNERO</b>${p.genero}</div>`,p.formato&&`<div class="ficha-chip"><b>FORMATO</b>${p.formato}</div>`,p.duracion&&`<div class="ficha-chip"><b>DURACIÓN</b>${p.duracion} min</div>`,p.publico&&`<div class="ficha-chip"><b>PÚBLICO</b>${p.publico}</div>`,p.procedencia&&`<div class="ficha-chip"><b>PROCEDENCIA</b>${p.procedencia}</div>`,`<div class="ficha-chip"><b>FASE</b>${p.faseTipo==='gira'?`En gira · ${p.faseFecha||''}`:`En producción · ${p.faseFecha||''}`}</div>`].filter(Boolean);
+  const el = document.getElementById('ficha-resumen'); el.innerHTML = chips.join(''); el.style.display = chips.length ? 'flex' : 'none';
+}
+
+function editarObra() {
+  const p = proyectoActivo;
+  document.getElementById('edit-nombre').value = p.nombre; document.getElementById('edit-genero').value = p.genero||''; document.getElementById('edit-formato').value = p.formato||''; document.getElementById('edit-duracion').value = p.duracion||''; document.getElementById('edit-publico').value = p.publico||''; document.getElementById('edit-procedencia').value = p.procedencia||''; document.getElementById('edit-fase-tipo').value = p.faseTipo||'produccion'; document.getElementById('edit-fase-fecha').value = p.faseFecha||''; document.getElementById('edit-fase-lugar').value = p.faseLugar||'';
+  toggleFase('edit'); document.getElementById('modal-editar-obra').classList.add('visible');
+}
+function guardarEdicionObra() {
+  proyectoActivo.nombre = document.getElementById('edit-nombre').value.trim() || proyectoActivo.nombre;
+  ['genero','formato','duracion','publico','procedencia'].forEach(f => proyectoActivo[f] = document.getElementById('edit-'+f).value);
+  proyectoActivo.faseTipo = document.getElementById('edit-fase-tipo').value; proyectoActivo.faseFecha = document.getElementById('edit-fase-fecha').value; proyectoActivo.faseLugar = document.getElementById('edit-fase-lugar').value;
+  guardar(); document.getElementById('nombre-proyecto-header').textContent = proyectoActivo.nombre; document.getElementById('nombre-proyecto-hitos').textContent = proyectoActivo.nombre; renderFichaResumen(); renderSidebar(); cerrarModal('modal-editar-obra');
+}
+
+function renderSidebar() {
+  const el = document.getElementById('lista-proyectos');
+  if (!proyectos.length) { el.innerHTML = '<div style="padding:0 24px;font-size:13px;color:var(--texto-suave)">Sin producciones aún</div>'; return; }
+  el.innerHTML = proyectos.map(p => { const pct = Math.round(p.hitos.filter(h=>h.estado==='listo').length/p.hitos.length*100); return `<div class="proyecto-item ${proyectoActivo?.id===p.id?'activo':''}" onclick="activarProyecto(${p.id})"><div class="proj-nombre">${p.nombre}</div><div class="proj-meta">${p.faseTipo==='gira'?'En gira':'En prod.'}${p.genero?' · '+p.genero:''}</div><div class="proj-progreso">${pct}% hitos</div></div>`; }).join('');
+}
+
+function setMoneda(m, btn) { monedaActiva = m; if (proyectoActivo) { proyectoActivo.moneda = m; guardar(); } document.querySelectorAll('.moneda-btn').forEach(b => b.classList.remove('activo')); btn.classList.add('activo'); recalcularPresupuesto(); calcularAmortizacion(); renderBolos(); renderPrevisiones(); renderCashFlow(); }
+
+// ── PRESUPUESTO ───────────────────────────────────────────────────────────────
+const TOOLTIPS_CAT = {Personal:'Cachés de actores, directores, técnicos. Con base imponible, IRPF e IVA.',Materiales:'Escenografía, iluminación, vestuario y todos los materiales físicos.','Comunicación / Publicidad':'Cartelería, fotografía, vídeo, publicidad en redes.','Derechos artísticos':'Derechos de autor, licencias musicales, composición.','Diseño gráfico':'Imagen corporativa, cartel, web, vídeo.','Gestión y producción':'Honorarios de gestión y coordinación de producción.',Otros:'Gastos que no encajan en otras categorías.'};
+
+function agregarFilaPresupuesto(cat) { if(!cat) cat='Personal'; proyectoActivo.presupuesto.items.push({concepto:'',categoria:cat,base:0,irpf:0,iva:0,pagado:false}); guardar(); renderPresupuesto(); }
+
+function renderPresupuesto() {
+  if (!proyectoActivo) return;
+  const items = proyectoActivo.presupuesto.items || [];
+  let html = '';
+  CATS_PRESUPUESTO.forEach(cat => {
+    html += `<tr class="cat-header"><td colspan="6">${cat} <button class="ayuda-btn" onclick="mostrarAyuda('${cat}','${TOOLTIPS_CAT[cat]||''}')">?</button></td><td><button class="btn-agregar" style="padding:2px 8px;font-size:8px;margin:0;" onclick="agregarFilaPresupuesto('${cat}')">+</button></td></tr>`;
+    items.forEach((it,i) => {
+      if (it.categoria !== cat) return;
+      const total = (parseFloat(it.base)||0) - (parseFloat(it.irpf)||0) + (parseFloat(it.iva)||0);
+      html += `<tr>
+        <td><input type="text" value="${it.concepto}" onchange="updatePresu(${i},'concepto',this.value)" placeholder="Concepto..."></td>
+        <td><input type="number" value="${it.base||''}" onchange="updatePresu(${i},'base',parseFloat(this.value)||0)"></td>
+        <td><input type="number" value="${it.irpf||''}" onchange="updatePresu(${i},'irpf',parseFloat(this.value)||0)" style="color:var(--rojo-claro);"></td>
+        <td><input type="number" value="${it.iva||''}" onchange="updatePresu(${i},'iva',parseFloat(this.value)||0)" style="color:var(--verde);"></td>
+        <td class="num">${fmt(total)}</td>
+        <td style="text-align:center;"><input type="checkbox" ${it.pagado?'checked':''} onchange="updatePresu(${i},'pagado',this.checked)" title="Pagado" style="width:auto;cursor:pointer;"></td>
+        <td><button class="btn-eliminar" onclick="eliminarPresu(${i})">×</button></td>
+      </tr>`;
+    });
+    const sub = items.filter(it=>it.categoria===cat).reduce((s,it)=>s+(parseFloat(it.base)||0)-(parseFloat(it.irpf)||0)+(parseFloat(it.iva)||0),0);
+    html += `<tr class="subtotal-row"><td colspan="4" style="text-align:right;padding:5px 7px;">SUBTOTAL ${cat.toUpperCase()}</td><td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--dorado);padding:5px 7px;">${fmt(sub)}</td><td colspan="2"></td></tr>`;
+  });
+  document.getElementById('presu-body').innerHTML = html;
+  recalcularPresupuesto();
+}
+function updatePresu(i,c,v){proyectoActivo.presupuesto.items[i][c]=v;guardar();renderPresupuesto();}
+function eliminarPresu(i){proyectoActivo.presupuesto.items.splice(i,1);guardar();renderPresupuesto();}
+
+function recalcularPresupuesto() {
+  if (!proyectoActivo) return;
+  const items = proyectoActivo.presupuesto.items || [];
+  const preTotal = items.reduce((s,it)=>s+(parseFloat(it.base)||0)-(parseFloat(it.irpf)||0)+(parseFloat(it.iva)||0),0);
+  const vtTotal = calcularTotalVTrabajo();
+  const pctImp = parseFloat(document.getElementById('pct-imprevistos')?.value) || 10;
+  const impMonto = (preTotal+vtTotal) * (pctImp/100);
+  const total = preTotal + vtTotal + impMonto;
+  proyectoActivo.presupuesto.pctImprevistos = pctImp;
+  proyectoActivo.presupuesto.totalProduccion = total;
+  guardar();
+  const s1=document.getElementById('presu-pretotal'),s2=document.getElementById('presu-imprevistos-monto'),s3=document.getElementById('presu-total');
+  if(s1)s1.textContent=fmt(preTotal+vtTotal); if(s2)s2.textContent=fmt(impMonto); if(s3)s3.textContent=fmt(total);
+  renderResumenCoprod(); calcularAmortizacion();
+}
+
+// ── VALOR DE TRABAJO ──────────────────────────────────────────────────────────
+function agregarVTrabajo(){proyectoActivo.vtrabajo.push({nombre:'',items:[{concepto:'',monto:0}]});guardar();renderVTrabajo();}
+function calcularTotalVTrabajo(){return(proyectoActivo.vtrabajo||[]).reduce((s,p)=>s+p.items.reduce((ss,it)=>ss+(parseFloat(it.monto)||0),0),0);}
+function renderVTrabajo() {
+  if(!proyectoActivo)return;
+  document.getElementById('vtrabajo-lista').innerHTML=(proyectoActivo.vtrabajo||[]).map((vt,vi)=>{
+    const tot=vt.items.reduce((s,it)=>s+(parseFloat(it.monto)||0),0);
+    return`<div style="margin-bottom:14px;padding:14px;background:rgba(0,0,0,0.2);border:1px solid var(--gris-borde);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <input type="text" value="${vt.nombre}" onchange="updateVT(${vi},'nombre',this.value)" placeholder="Nombre / Compañía" style="font-size:14px;font-weight:600;background:transparent;border:none;border-bottom:1px solid var(--gris-borde);padding:2px 0;flex:1;">
+        <button class="btn-eliminar" onclick="eliminarVT(${vi})">×</button>
+      </div>
+      ${vt.items.map((it,ii)=>`<div style="display:grid;grid-template-columns:1fr 110px auto;gap:5px;margin-bottom:5px;"><input type="text" value="${it.concepto}" onchange="updateVTItem(${vi},${ii},'concepto',this.value)" placeholder="Concepto..."><input type="number" value="${it.monto||''}" onchange="updateVTItem(${vi},${ii},'monto',parseFloat(this.value)||0)"><button class="btn-eliminar" onclick="eliminarVTItem(${vi},${ii})">×</button></div>`).join('')}
+      <button class="btn-agregar" onclick="agregarVTItem(${vi})" style="margin-top:2px;">+ Ítem</button>
+      <div style="text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--dorado);margin-top:6px;">Total: ${fmt(tot)}</div>
+    </div>`;
+  }).join('');
+  const tot=calcularTotalVTrabajo();const el=document.getElementById('vtrabajo-total');if(el)el.textContent=fmt(tot);
+  recalcularPresupuesto();
+}
+function updateVT(vi,c,v){proyectoActivo.vtrabajo[vi][c]=v;guardar();}
+function eliminarVT(vi){proyectoActivo.vtrabajo.splice(vi,1);guardar();renderVTrabajo();}
+function agregarVTItem(vi){proyectoActivo.vtrabajo[vi].items.push({concepto:'',monto:0});guardar();renderVTrabajo();}
+function updateVTItem(vi,ii,c,v){proyectoActivo.vtrabajo[vi].items[ii][c]=v;guardar();renderVTrabajo();}
+function eliminarVTItem(vi,ii){proyectoActivo.vtrabajo[vi].items.splice(ii,1);guardar();renderVTrabajo();}
+
+// ── COPRODUCTORES ─────────────────────────────────────────────────────────────
+function agregarCoproductor(){proyectoActivo.coproductores.push({nombre:'',aportacionEconomica:0});guardar();renderCoproductores();}
+function calcularAporteCoprod(cp){const vtMatch=proyectoActivo.vtrabajo.find(vt=>vt.nombre===cp.nombre);const vtMonto=vtMatch?vtMatch.items.reduce((s,it)=>s+(parseFloat(it.monto)||0),0):0;return vtMonto+(parseFloat(cp.aportacionEconomica)||0);}
+function renderCoproductores() {
+  if(!proyectoActivo)return;
+  document.getElementById('coprod-lista').innerHTML=(proyectoActivo.coproductores||[]).map((cp,ci)=>`
+    <div style="margin-bottom:12px;padding:14px;background:rgba(0,0,0,0.2);border:1px solid var(--gris-borde);">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+        <input type="text" value="${cp.nombre}" onchange="updateCoprod(${ci},'nombre',this.value)" placeholder="Nombre / Compañía" style="font-size:14px;font-weight:600;background:transparent;border:none;border-bottom:1px solid var(--gris-borde);padding:2px 0;flex:1;">
+        <button class="btn-eliminar" onclick="eliminarCoprod(${ci})">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);">Aportación económica</div>
+        <input type="number" value="${cp.aportacionEconomica||''}" onchange="updateCoprod(${ci},'aportacionEconomica',parseFloat(this.value)||0)">
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);margin-top:5px;">Valor de trabajo: <span style="color:var(--dorado);">${fmt(calcularAporteCoprod(cp)-(parseFloat(cp.aportacionEconomica)||0))}</span> · Total aportado: <span style="color:var(--dorado);">${fmt(calcularAporteCoprod(cp))}</span></div>
+    </div>`).join('');
+  renderResumenCoprod();
+}
+function updateCoprod(ci,c,v){proyectoActivo.coproductores[ci][c]=v;guardar();renderCoproductores();}
+function eliminarCoprod(ci){proyectoActivo.coproductores.splice(ci,1);guardar();renderCoproductores();}
+function renderResumenCoprod() {
+  if(!proyectoActivo)return;
+  const total=proyectoActivo.presupuesto?.totalProduccion||0;
+  const totalAportado=(proyectoActivo.coproductores||[]).reduce((s,cp)=>s+calcularAporteCoprod(cp),0);
+  const restante=Math.max(0,total-totalAportado);
+  const el=document.getElementById('coprod-resumen');if(!el)return;
+  el.innerHTML=(proyectoActivo.coproductores||[]).map(cp=>{const aporte=calcularAporteCoprod(cp);const pct=total>0?Math.round(aporte/total*100):0;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gris-borde);"><span>${cp.nombre||'Sin nombre'}</span><div><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--dorado);">${fmt(aporte)}</span><span style="font-family:'Playfair Display',serif;font-size:20px;color:var(--dorado);font-weight:700;margin-left:10px;">${pct}%</span></div></div>`;}).join('')||'<div style="color:var(--texto-suave);font-style:italic;padding:8px 0;">Agregá co-productores para ver el resumen.</div>';
+  const r1=document.getElementById('coprod-restante'),r2=document.getElementById('coprod-restante-pct');
+  if(r1)r1.textContent=fmt(restante);if(r2)r2.textContent=(total>0?Math.round(restante/total*100):0)+'%';
+  renderReparto();
+}
+
+// ── FINANCIACION ──────────────────────────────────────────────────────────────
+const FUENTES=['Ventas (amortización)','Subvenciones','Sponsors/Patrocinios','Deducción fiscal','Inversores','Otras'];
+function agregarFinanciacion(){proyectoActivo.financiacion.push({fuente:'Ventas (amortización)',monto:0,sinIva:false});guardar();renderFinanciacion();}
+function renderFinanciacion() {
+  if(!proyectoActivo)return;
+  const total=proyectoActivo.presupuesto?.totalProduccion||0;
+  document.getElementById('financ-lista').innerHTML=(proyectoActivo.financiacion||[]).map((f,fi)=>{
+    const pct=total>0?Math.round((parseFloat(f.monto)||0)/total*100):0;
+    return`<div style="display:grid;grid-template-columns:1fr 120px auto auto;gap:8px;align-items:center;margin-bottom:8px;">
+      <select onchange="updateFinanc(${fi},'fuente',this.value)">${FUENTES.map(s=>`<option ${f.fuente===s?'selected':''}>${s}</option>`).join('')}</select>
+      <input type="number" value="${f.monto||''}" onchange="updateFinanc(${fi},'monto',parseFloat(this.value)||0)">
+      <div style="display:flex;align-items:center;gap:5px;"><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--dorado);">${pct}%</span><label style="font-family:'DM Mono',monospace;font-size:8px;color:var(--texto-suave);cursor:pointer;white-space:nowrap;"><input type="checkbox" ${f.sinIva?'checked':''} onchange="updateFinanc(${fi},'sinIva',this.checked)" style="width:auto;"> sin IVA</label></div>
+      <button class="btn-eliminar" onclick="eliminarFinanc(${fi})">×</button>
+    </div>`;
+  }).join('');
+  const totF=(proyectoActivo.financiacion||[]).reduce((s,f)=>s+(parseFloat(f.monto)||0),0);
+  const faltante=Math.max(0,total-totF);
+  const e1=document.getElementById('financ-total'),e2=document.getElementById('financ-faltante');
+  if(e1)e1.textContent=fmt(totF)+' ('+(total>0?Math.round(totF/total*100):0)+'%)';
+  if(e2)e2.textContent=fmt(faltante);
+}
+function updateFinanc(fi,c,v){proyectoActivo.financiacion[fi][c]=v;guardar();renderFinanciacion();}
+function eliminarFinanc(fi){proyectoActivo.financiacion.splice(fi,1);guardar();renderFinanciacion();}
+
+// ── AMORTIZACION ──────────────────────────────────────────────────────────────
+function setModeloAmort(m,btn){modeloAmort=m;proyectoActivo.modeloAmort=m;guardar();['taquilla','cache','garantia'].forEach(x=>{const e=document.getElementById('amort-config-'+x);if(e)e.style.display=m===x?'block':'none';});document.querySelectorAll('#vpanel-amortizacion .moneda-btn').forEach(b=>b.classList.remove('activo'));if(btn)btn.classList.add('activo');calcularAmortizacion();}
+function cargarAmortConfig() {
+  const c=proyectoActivo.amortConfig||{};
+  const sv=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
+  sv('amort-cap',c.cap||100);sv('amort-ocup',c.ocup||70);sv('amort-precio',c.precio||15);sv('amort-cache',c.cache||3000);sv('amort-gar-min',c.garMin||2000);sv('amort-gar-pct',c.garPct||60);sv('amort-gar-cap',c.garCap||100);sv('amort-gar-precio',c.garPrecio||15);sv('amort-gar-ocup',c.garOcup||70);sv('amort-gastos-bolo',c.gastosBolo||500);sv('amort-reserva',c.reserva||10);
+  modeloAmort=proyectoActivo.modeloAmort||'taquilla';
+  ['taquilla','cache','garantia'].forEach(x=>{const e=document.getElementById('amort-config-'+x);if(e)e.style.display=modeloAmort===x?'block':'none';});
+}
+function calcularAmortizacion() {
+  if(!proyectoActivo)return;
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  let ingresoBruto=0;
+  if(modeloAmort==='taquilla')ingresoBruto=g('amort-cap')*(g('amort-ocup')/100)*g('amort-precio');
+  else if(modeloAmort==='cache')ingresoBruto=g('amort-cache');
+  else ingresoBruto=Math.max(g('amort-gar-min'),g('amort-gar-cap')*(g('amort-gar-ocup')/100)*g('amort-gar-precio')*(g('amort-gar-pct')/100));
+  const gastosBolo=g('amort-gastos-bolo');
+  const netoFn=ingresoBruto-gastosBolo;
+  const pctR=g('amort-reserva')/100;
+  const netoDisp=netoFn*(1-pctR);
+  const totalProd=proyectoActivo.presupuesto?.totalProduccion||0;
+  const funciones=netoDisp>0?Math.ceil(totalProd/netoDisp):null;
+  const reservaTotal=funciones?netoFn*pctR*funciones:0;
+  proyectoActivo.amortConfig={cap:g('amort-cap'),ocup:g('amort-ocup'),precio:g('amort-precio'),cache:g('amort-cache'),garMin:g('amort-gar-min'),garPct:g('amort-gar-pct'),garCap:g('amort-gar-cap'),garPrecio:g('amort-gar-precio'),garOcup:g('amort-gar-ocup'),gastosBolo,reserva:g('amort-reserva')};
+  guardar();
+  const e1=document.getElementById('amort-funciones'),e2=document.getElementById('amort-ingreso-bruto'),e3=document.getElementById('amort-neto-fn'),e4=document.getElementById('amort-reserva-total');
+  if(e1)e1.textContent=funciones!==null?funciones:'∞';if(e2)e2.textContent=fmt(ingresoBruto);if(e3)e3.textContent=fmt(netoFn);if(e4)e4.textContent=funciones?fmt(reservaTotal):'—';
+  renderReparto();
+}
+function renderReparto() {
+  const body=document.getElementById('reparto-body');if(!body)return;
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  let ingresoBruto=0;
+  if(modeloAmort==='taquilla')ingresoBruto=g('amort-cap')*(g('amort-ocup')/100)*g('amort-precio');
+  else if(modeloAmort==='cache')ingresoBruto=g('amort-cache');
+  else ingresoBruto=Math.max(g('amort-gar-min'),g('amort-gar-cap')*(g('amort-gar-ocup')/100)*g('amort-gar-precio')*(g('amort-gar-pct')/100));
+  const netoFn=(ingresoBruto-g('amort-gastos-bolo'))*(1-g('amort-reserva')/100);
+  const total=proyectoActivo.presupuesto?.totalProduccion||0;
+  body.innerHTML=(proyectoActivo.coproductores||[]).map(cp=>{const pct=total>0?calcularAporteCoprod(cp)/total:0;return`<tr><td>${cp.nombre||'—'}</td><td style="color:var(--dorado);">${Math.round(pct*100)}%</td><td style="color:var(--verde);">${fmt(netoFn*pct)}</td></tr>`;}).join('')||'<tr><td colspan="3" style="color:var(--texto-suave);font-style:italic;">Sin co-productores</td></tr>';
+}
+
+// ── BOLOS ─────────────────────────────────────────────────────────────────────
+function agregarBolo(){proyectoActivo.bolos.push({nombre:'Nueva función',fecha:'',cache:0,items:[{concepto:'',categoria:'Personal',monto:0,tipo:'variable'}]});guardar();renderBolos();}
+function renderBolos() {
+  if(!proyectoActivo)return;
+  const total=proyectoActivo.presupuesto?.totalProduccion||0;
+  document.getElementById('bolo-lista').innerHTML=(proyectoActivo.bolos||[]).map((b,bi)=>{
+    const totalG=b.items.reduce((s,it)=>s+(parseFloat(it.monto)||0),0);
+    const resultado=(parseFloat(b.cache)||0)-totalG;
+    return`<div style="margin-bottom:14px;padding:16px;background:var(--gris-oscuro);border:1px solid var(--gris-borde);">
+      <div style="display:grid;grid-template-columns:1fr 150px 150px auto;gap:10px;align-items:end;margin-bottom:10px;">
+        <div class="field-group" style="margin:0;"><label>Función / Bolo</label><input type="text" value="${b.nombre}" onchange="updateBolo(${bi},'nombre',this.value)"></div>
+        <div class="field-group" style="margin:0;"><label>Fecha</label><input type="text" value="${b.fecha||''}" onchange="updateBolo(${bi},'fecha',this.value)" placeholder="dd/mm/aaaa"></div>
+        <div class="field-group" style="margin:0;"><label>Caché / Recaudación</label><input type="number" value="${b.cache||''}" onchange="updateBolo(${bi},'cache',parseFloat(this.value)||0)"></div>
+        <button class="btn-eliminar" onclick="eliminarBolo(${bi})" style="margin-bottom:2px;">×</button>
+      </div>
+      <table class="presu-table"><thead><tr><th>Concepto</th><th>Categoría</th><th>Tipo</th><th class="num">Monto</th><th></th></tr></thead>
+      <tbody>${b.items.map((it,ii)=>`<tr><td><input type="text" value="${it.concepto}" onchange="updateBoloItem(${bi},${ii},'concepto',this.value)" placeholder="Concepto..."></td><td><select onchange="updateBoloItem(${bi},${ii},'categoria',this.value)" style="background:transparent;border:none;color:var(--texto);font-size:12px;">${CATS_BOLO.map(c=>`<option ${it.categoria===c?'selected':''}>${c}</option>`).join('')}</select></td><td><select onchange="updateBoloItem(${bi},${ii},'tipo',this.value)" style="background:transparent;border:none;font-family:'DM Mono',monospace;font-size:9px;color:${it.tipo==='fijo'?'var(--texto-suave)':'var(--amarillo)'};"><option value="fijo" ${it.tipo==='fijo'?'selected':''}>FIJO</option><option value="variable" ${it.tipo==='variable'?'selected':''}>VARIABLE</option></select></td><td><input type="number" value="${it.monto||''}" onchange="updateBoloItem(${bi},${ii},'monto',parseFloat(this.value)||0)"></td><td><button class="btn-eliminar" onclick="eliminarBoloItem(${bi},${ii})">×</button></td></tr>`).join('')}</tbody>
+      </table>
+      <button class="btn-agregar" onclick="agregarBoloItem(${bi})" style="margin-top:5px;">+ Ítem</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--gris-borde);">
+        <div><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--texto-suave);">TOTAL GASTOS</div><div style="font-family:'DM Mono',monospace;font-size:14px;">${fmt(totalG)}</div></div>
+        <div><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--texto-suave);">RESULTADO NETO</div><div style="font-family:'Playfair Display',serif;font-size:20px;color:${resultado>=0?'var(--verde)':'var(--rojo)'};">${fmt(resultado)}</div></div>
+        <div><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--texto-suave);">REPARTO</div>${(proyectoActivo.coproductores||[]).map(cp=>{const pct=total>0?calcularAporteCoprod(cp)/total:0;return`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--dorado);">${cp.nombre||'—'} ${Math.round(pct*100)}%: ${fmt(resultado*pct)}</div>`;}).join('')||'<div style="font-size:9px;color:var(--texto-suave);">Sin co-productores</div>'}</div>
+      </div>
+    </div>`;
+  }).join('')||'<div style="color:var(--texto-suave);font-style:italic;padding:16px 0;text-align:center;">Registrá cada función para ver el resultado neto y el reparto.</div>';
+}
+function updateBolo(bi,c,v){proyectoActivo.bolos[bi][c]=v;guardar();renderBolos();}
+function eliminarBolo(bi){proyectoActivo.bolos.splice(bi,1);guardar();renderBolos();}
+function agregarBoloItem(bi){proyectoActivo.bolos[bi].items.push({concepto:'',categoria:'Personal',monto:0,tipo:'variable'});guardar();renderBolos();}
+function updateBoloItem(bi,ii,c,v){proyectoActivo.bolos[bi].items[ii][c]=v;guardar();renderBolos();}
+function eliminarBoloItem(bi,ii){proyectoActivo.bolos[bi].items.splice(ii,1);guardar();renderBolos();}
+
+// ── PREVISIONES ───────────────────────────────────────────────────────────────
+function agregarPrevision(){proyectoActivo.previsiones.push({concepto:'',categoria:'Personal',presup:0,real:0});guardar();renderPrevisiones();}
+function renderPrevisiones() {
+  if(!proyectoActivo)return;
+  const prevs=proyectoActivo.previsiones||[];
+  const el=document.getElementById('previsiones-lista');if(!el)return;
+  el.innerHTML=prevs.map((p,i)=>`<div style="display:grid;grid-template-columns:1fr 120px 120px 120px auto;gap:8px;align-items:center;margin-bottom:8px;">
+    <input type="text" value="${p.concepto}" onchange="updatePrev(${i},'concepto',this.value)" placeholder="Partida...">
+    <select onchange="updatePrev(${i},'categoria',this.value)" style="font-size:12px;">${CATS_PRESUPUESTO.map(c=>`<option ${p.categoria===c?'selected':''}>${c}</option>`).join('')}</select>
+    <input type="number" value="${p.presup||''}" onchange="updatePrev(${i},'presup',parseFloat(this.value)||0)" placeholder="Presupuestado">
+    <input type="number" value="${p.real||''}" onchange="updatePrev(${i},'real',parseFloat(this.value)||0)" placeholder="Real">
+    <button class="btn-eliminar" onclick="eliminarPrev(${i})">×</button>
+  </div>
+  <div style="text-align:right;font-family:'DM Mono',monospace;font-size:10px;margin-bottom:8px;color:${(p.presup-p.real)>=0?'var(--verde)':'var(--rojo)'};">Saldo: ${fmt(p.presup-p.real)}</div>`).join('');
+  const totP=prevs.reduce((s,p)=>s+(parseFloat(p.presup)||0),0);
+  const totR=prevs.reduce((s,p)=>s+(parseFloat(p.real)||0),0);
+  const saldo=totP-totR;
+  const e1=document.getElementById('prev-total-presup'),e2=document.getElementById('prev-total-real'),e3=document.getElementById('prev-saldo');
+  if(e1)e1.textContent=fmt(totP);if(e2)e2.textContent=fmt(totR);if(e3){e3.textContent=fmt(saldo);e3.style.color=saldo>=0?'var(--verde)':'var(--rojo)';}
+}
+function updatePrev(i,c,v){proyectoActivo.previsiones[i][c]=v;guardar();renderPrevisiones();}
+function eliminarPrev(i){proyectoActivo.previsiones.splice(i,1);guardar();renderPrevisiones();}
+
+// ── HITOS ─────────────────────────────────────────────────────────────────────
+function renderHitos() {
+  document.getElementById('hitos-grid').innerHTML=proyectoActivo.hitos.map((h,i)=>{const dot=h.archivos&&h.archivos.length?'<span class="hito-dot"></span>':'';return`<div class="hito-card ${h.estado}" onclick="abrirHito(${i})"><div class="hito-nombre">${h.nombre}${dot}</div><div class="hito-footer"><span class="badge ${h.estado}">${h.estado==='en-proceso'?'En proceso':h.estado==='listo'?'Listo ✓':'Pendiente'}</span><button class="hito-ia-btn" onclick="event.stopPropagation();abrirHito(${i},true)">✦ IA</button></div></div>`;}).join('');
+  const listos=proyectoActivo.hitos.filter(h=>h.estado==='listo').length;
+  const pct=Math.round(listos/proyectoActivo.hitos.length*100);
+  document.getElementById('barra-progreso').style.width=pct+'%';
+  document.getElementById('texto-progreso').textContent=`${listos} / ${proyectoActivo.hitos.length} completados`;
+  renderSidebar();
+}
+function abrirHito(i,focusIA=false) {
+  hitoActivo=i;const h=proyectoActivo.hitos[i];
+  document.getElementById('modal-hito-nombre').textContent=h.nombre;
+  document.getElementById('modal-notas').value=h.notas||'';
+  document.getElementById('ia-respuesta').textContent='La IA te ayudará a desarrollar este hito.';
+  document.getElementById('ia-respuesta').className='ia-respuesta vacia';
+  document.getElementById('ia-prompt').value='';
+  const tieneEditor=HITOS_EDITOR.includes(h.nombre);
+  document.getElementById('editor-wrap').classList.toggle('visible',tieneEditor);
+  if(tieneEditor)document.getElementById('editor-content').innerHTML=h.textoEditor||'';
+  renderArchivos();renderLinks();
+  document.getElementById('ia-sugerencias').innerHTML=(SUGS[h.nombre]||[]).map(s=>`<button class="sugerencia-btn" onclick="usarSugerencia(this)">${s}</button>`).join('');
+  document.querySelectorAll('.estado-btn').forEach(b=>b.classList.remove('activo'));
+  document.querySelector(`.estado-btn.${h.estado}`).classList.add('activo');
+  document.getElementById('modal-hito').classList.add('visible');
+  if(focusIA)setTimeout(()=>document.getElementById('ia-prompt').focus(),200);
+}
+function usarSugerencia(btn){document.getElementById('ia-prompt').value=btn.textContent;consultarIA();}
+function setEstado(e){proyectoActivo.hitos[hitoActivo].estado=e;guardar();document.querySelectorAll('.estado-btn').forEach(b=>b.classList.remove('activo'));document.querySelector(`.estado-btn.${e}`).classList.add('activo');renderHitos();}
+function guardarNota(){proyectoActivo.hitos[hitoActivo].notas=document.getElementById('modal-notas').value;guardar();}
+function guardarEditor(){proyectoActivo.hitos[hitoActivo].textoEditor=document.getElementById('editor-content').innerHTML;guardar();}
+function fmtTexto(cmd){document.getElementById('editor-content').focus();document.execCommand(cmd,false,null);guardarEditor();}
+function exportarTexto(e){navigator.clipboard.writeText(document.getElementById('editor-content').innerText).then(()=>{const btn=e.target;btn.textContent='✓ Copiado';setTimeout(()=>btn.textContent='↓ Copiar',1500);});}
+function subirArchivos(input){const h=proyectoActivo.hitos[hitoActivo];if(!h.archivos)h.archivos=[];Array.from(input.files).forEach(file=>{const r=new FileReader();r.onload=e=>{h.archivos.push({nombre:file.name,tipo:file.type,data:e.target.result});guardar();renderArchivos();renderHitos();};r.readAsDataURL(file);});input.value='';}
+function renderArchivos(){const h=proyectoActivo.hitos[hitoActivo];const lista=document.getElementById('archivos-lista');if(!h.archivos||!h.archivos.length){lista.innerHTML='';return;}lista.innerHTML=h.archivos.map((a,i)=>`<div class="archivo-item"><span class="archivo-nombre">${a.nombre}</span><button class="archivo-descargar" onclick="descargarArchivo(${i})">↓</button><button class="archivo-eliminar" onclick="eliminarArchivo(${i})">×</button></div>`).join('');renderLinks();}
+function descargarArchivo(i){const a=proyectoActivo.hitos[hitoActivo].archivos[i];const l=document.createElement('a');l.href=a.data;l.download=a.nombre;l.click();}
+function eliminarArchivo(i){proyectoActivo.hitos[hitoActivo].archivos.splice(i,1);guardar();renderArchivos();renderHitos();}
+
+// ── IA HITO ───────────────────────────────────────────────────────────────────
+async function consultarIA() {
+  const prompt=document.getElementById('ia-prompt').value.trim();if(!prompt)return;
+  const hito=proyectoActivo.hitos[hitoActivo];
+  const btn=document.getElementById('btn-ia'),resEl=document.getElementById('ia-respuesta');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Pensando...';resEl.className='ia-respuesta';resEl.textContent='';
+  const sistema=`Sos un asistente especializado en producción teatral independiente basado en la Metodología Praxis de Karina Garantivá.${perfil.compania?` La compañía se llama "${perfil.compania}".`:''} La obra se llama "${proyectoActivo.nombre}". Género: ${proyectoActivo.genero||'no especificado'}. Procedencia: ${proyectoActivo.procedencia||'no especificada'}. Hito actual: "${hito.nombre}". Notas: "${hito.notas||'ninguna'}". Respondé de forma práctica y concreta. Máximo 300 palabras.`;
+  try{const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sistema,messages:[{role:'user',content:prompt}]})});const data=await resp.json();resEl.textContent=data.content?.map(b=>b.text||'').join('')||'Sin respuesta.';resEl.className='ia-respuesta';}catch(e){resEl.textContent='Error al consultar la IA.';resEl.className='ia-respuesta';}
+  btn.disabled=false;btn.innerHTML='Consultar';
+}
+
+// ── GIRAS ─────────────────────────────────────────────────────────────────────
+function agregarGira(){proyectoActivo.giras.push({localidad:'',fecha:'',teatro:'',contrato:'pendiente',nFn:1,tipoIngreso:'cache',distribuidora:'',butacas:0,precio:0,cache:0});guardar();renderGiras();}
+function renderGiras() {
+  if(!proyectoActivo)return;
+  const body=document.getElementById('giras-body');if(!body)return;
+  body.innerHTML=(proyectoActivo.giras||[]).map((g,gi)=>{
+    const recaud=g.tipoIngreso==='cache'?(parseFloat(g.cache)||0):(parseFloat(g.butacas)||0)*(parseFloat(g.precio)||0);
+    return`<tr>
+      <td><input type="text" value="${g.localidad||''}" onchange="updateGira(${gi},'localidad',this.value)" placeholder="Ciudad..."></td>
+      <td><input type="text" value="${g.fecha||''}" onchange="updateGira(${gi},'fecha',this.value)" placeholder="dd/mm"></td>
+      <td><input type="text" value="${g.teatro||''}" onchange="updateGira(${gi},'teatro',this.value)" placeholder="Sala..."></td>
+      <td><select onchange="updateGira(${gi},'contrato',this.value)" style="background:transparent;border:none;font-family:'DM Mono',monospace;font-size:9px;color:${g.contrato==='confirmado'?'var(--verde)':g.contrato==='prereserva'?'var(--amarillo)':'var(--texto-suave)'};">
+        <option value="pendiente" ${g.contrato==='pendiente'?'selected':''}>Pendiente</option>
+        <option value="prereserva" ${g.contrato==='prereserva'?'selected':''}>Prereserva</option>
+        <option value="confirmado" ${g.contrato==='confirmado'?'selected':''}>Confirmado</option>
+      </select></td>
+      <td><input type="number" value="${g.nFn||1}" onchange="updateGira(${gi},'nFn',parseInt(this.value)||1)" style="width:50px;"></td>
+      <td><select onchange="updateGira(${gi},'tipoIngreso',this.value)" style="background:transparent;border:none;font-family:'DM Mono',monospace;font-size:9px;color:var(--texto-suave);">
+        <option value="cache" ${g.tipoIngreso==='cache'?'selected':''}>Caché</option>
+        <option value="taquilla" ${g.tipoIngreso==='taquilla'?'selected':''}>Taquilla</option>
+        <option value="mixto" ${g.tipoIngreso==='mixto'?'selected':''}>Mixto</option>
+      </select></td>
+      <td><input type="text" value="${g.distribuidora||''}" onchange="updateGira(${gi},'distribuidora',this.value)" placeholder="—"></td>
+      <td><input type="number" value="${g.butacas||''}" onchange="updateGira(${gi},'butacas',parseFloat(this.value)||0)" style="width:70px;"></td>
+      <td><input type="number" value="${g.precio||''}" onchange="updateGira(${gi},'precio',parseFloat(this.value)||0)" style="width:70px;"></td>
+      <td><input type="number" value="${g.cache||''}" onchange="updateGira(${gi},'cache',parseFloat(this.value)||0)" style="width:80px;"></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--dorado);">${fmt(recaud)}</td>
+      <td><button class="btn-eliminar" onclick="eliminarGira(${gi})">×</button></td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--texto-suave);font-style:italic;">Sin funciones registradas.</td></tr>`;
+}
+function updateGira(gi,c,v){proyectoActivo.giras[gi][c]=v;guardar();renderGiras();}
+function eliminarGira(gi){proyectoActivo.giras.splice(gi,1);guardar();renderGiras();}
+
+// ── TRACKER COMPRAS ───────────────────────────────────────────────────────────
+const TRACKER_CATS=['vestuario','escenografia','comunicacion','otros-compras'];
+const TRACKER_IDS={vestuario:'trk-vest',escenografia:'trk-escen',comunicacion:'trk-com','otros-compras':'trk-otros'};
+function agregarCompra(cat){if(!proyectoActivo.compras[cat])proyectoActivo.compras[cat]=[];proyectoActivo.compras[cat].push({concepto:'',proveedor:'',pu:0,cantidad:1,iva:0,envio:0,presup:0,real:0,fecha:'',link:'',responsable:''});guardar();renderCompras(cat);}
+function renderTodasCompras(){TRACKER_CATS.forEach(renderCompras);}
+function renderCompras(cat) {
+  if(!proyectoActivo)return;
+  const items=proyectoActivo.compras[cat]||[];
+  const contenido=document.getElementById(`tracker-${cat}-contenido`);if(!contenido)return;
+  contenido.innerHTML=`<div style="overflow-x:auto;"><table class="tracker-table"><thead><tr><th>Concepto</th><th>Proveedor</th><th>P. Unit.</th><th>Cant.</th><th>IVA</th><th>Envío</th><th>Total real</th><th>Presup.</th><th>Fecha</th><th>Link</th><th>Resp.</th><th></th></tr></thead><tbody>
+    ${items.map((it,i)=>{
+      const totalReal=((parseFloat(it.pu)||0)*(parseFloat(it.cantidad)||1))+(parseFloat(it.iva)||0)+(parseFloat(it.envio)||0);
+      return`<tr>
+        <td><input type="text" value="${it.concepto||''}" onchange="updateCompra('${cat}',${i},'concepto',this.value)" placeholder="Ítem..."></td>
+        <td><input type="text" value="${it.proveedor||''}" onchange="updateCompra('${cat}',${i},'proveedor',this.value)"></td>
+        <td><input type="number" value="${it.pu||''}" onchange="updateCompra('${cat}',${i},'pu',parseFloat(this.value)||0)"></td>
+        <td><input type="number" value="${it.cantidad||1}" onchange="updateCompra('${cat}',${i},'cantidad',parseFloat(this.value)||1)" style="width:50px;"></td>
+        <td><input type="number" value="${it.iva||''}" onchange="updateCompra('${cat}',${i},'iva',parseFloat(this.value)||0)" style="width:60px;"></td>
+        <td><input type="number" value="${it.envio||''}" onchange="updateCompra('${cat}',${i},'envio',parseFloat(this.value)||0)" style="width:60px;"></td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--dorado);">${fmt(totalReal)}</td>
+        <td><input type="number" value="${it.presup||''}" onchange="updateCompra('${cat}',${i},'presup',parseFloat(this.value)||0)"></td>
+        <td><input type="text" value="${it.fecha||''}" onchange="updateCompra('${cat}',${i},'fecha',this.value)" placeholder="dd/mm/aaaa" style="width:90px;"></td>
+        <td><input type="text" value="${it.link||''}" onchange="updateCompra('${cat}',${i},'link',this.value)" placeholder="URL..."></td>
+        <td><input type="text" value="${it.responsable||''}" onchange="updateCompra('${cat}',${i},'responsable',this.value)"></td>
+        <td><button class="btn-eliminar" onclick="eliminarCompra('${cat}',${i})">×</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+  const totReal=items.reduce((s,it)=>s+((parseFloat(it.pu)||0)*(parseFloat(it.cantidad)||1))+(parseFloat(it.iva)||0)+(parseFloat(it.envio)||0),0);
+  const totPresup=items.reduce((s,it)=>s+(parseFloat(it.presup)||0),0);
+  const prefix=TRACKER_IDS[cat];
+  const e1=document.getElementById(prefix+'-presup'),e2=document.getElementById(prefix+'-real'),e3=document.getElementById(prefix+'-saldo');
+  if(e1)e1.textContent=fmt(totPresup);if(e2)e2.textContent=fmt(totReal);if(e3){e3.textContent=fmt(totPresup-totReal);e3.style.color=(totPresup-totReal)>=0?'var(--verde)':'var(--rojo)';}
+}
+function updateCompra(cat,i,c,v){proyectoActivo.compras[cat][i][c]=v;guardar();renderCompras(cat);}
+function eliminarCompra(cat,i){proyectoActivo.compras[cat].splice(i,1);guardar();renderCompras(cat);}
+function cambiarTrackerTab(cat,el){document.querySelectorAll('#panel-tracker .vtab').forEach(t=>t.classList.remove('activo'));TRACKER_CATS.forEach(c=>{const e=document.getElementById('tracker-'+c);if(e)e.classList.remove('activo');});el.classList.add('activo');document.getElementById('tracker-'+cat).classList.add('activo');}
+
+// ── CASH FLOW ─────────────────────────────────────────────────────────────────
+function renderCashFlow() {
+  if(!proyectoActivo)return;
+  const el=document.getElementById('cf-table');if(!el)return;
+  if(!proyectoActivo.cashflow)proyectoActivo.cashflow={};
+  const cf=proyectoActivo.cashflow;
+  const totalesMes={};MESES.forEach(m=>totalesMes[m]={ing:0,gas:0});
+  let html=`<thead><tr><th>Concepto</th>${MESES.map(m=>`<th>${m}</th>`).join('')}<th>TOTAL</th></tr></thead><tbody>`;
+  html+=`<tr class="cf-seccion"><td colspan="${MESES.length+2}">INGRESOS</td></tr>`;
+  CF_INGRESOS.forEach(ing=>{
+    const key=`ing_${ing}`;if(!cf[key])cf[key]={};
+    const totFila=MESES.reduce((s,m)=>s+(parseFloat(cf[key][m])||0),0);
+    MESES.forEach(m=>totalesMes[m].ing+=(parseFloat(cf[key][m])||0));
+    html+=`<tr><td>${ing}</td>${MESES.map(m=>`<td><input type="number" value="${cf[key][m]||''}" onchange="updateCF('${key}','${m}',this.value)" placeholder="0"></td>`).join('')}<td style="color:var(--verde);font-family:'DM Mono',monospace;">${fmt(totFila)}</td></tr>`;
+  });
+  html+=`<tr class="cf-seccion"><td colspan="${MESES.length+2}">GASTOS</td></tr>`;
+  CF_GASTOS.forEach(gas=>{
+    const key=`gas_${gas}`;if(!cf[key])cf[key]={};
+    const totFila=MESES.reduce((s,m)=>s+(parseFloat(cf[key][m])||0),0);
+    MESES.forEach(m=>totalesMes[m].gas+=(parseFloat(cf[key][m])||0));
+    html+=`<tr><td>${gas}</td>${MESES.map(m=>`<td><input type="number" value="${cf[key][m]||''}" onchange="updateCF('${key}','${m}',this.value)" placeholder="0"></td>`).join('')}<td style="color:var(--rojo-claro);font-family:'DM Mono',monospace;">${fmt(totFila)}</td></tr>`;
+  });
+  const totIng=Object.values(totalesMes).reduce((s,v)=>s+v.ing,0);
+  const totGas=Object.values(totalesMes).reduce((s,v)=>s+v.gas,0);
+  html+=`<tr class="cf-total"><td>RESULTADO MENSUAL</td>${MESES.map(m=>{const r=totalesMes[m].ing-totalesMes[m].gas;return`<td class="${r>=0?'cf-positivo':'cf-negativo'}">${fmt(r)}</td>`;}).join('')}<td style="color:var(--dorado);">${fmt(totIng-totGas)}</td></tr>`;
+  let acum=0;
+  html+=`<tr class="cf-acum"><td>ACUMULADO</td>${MESES.map(m=>{acum+=totalesMes[m].ing-totalesMes[m].gas;return`<td class="${acum>=0?'cf-positivo':'cf-negativo'}">${fmt(acum)}</td>`;}).join('')}<td></td></tr>`;
+  html+='</tbody>';
+  el.innerHTML=html;
+}
+function updateCF(key,mes,val){if(!proyectoActivo.cashflow[key])proyectoActivo.cashflow[key]={};proyectoActivo.cashflow[key][mes]=parseFloat(val)||0;guardar();renderCashFlow();}
+
+// ── CONVOCATORIAS ─────────────────────────────────────────────────────────────
+function agregarConvocatoria(){if(!proyectoActivo.convocatorias)proyectoActivo.convocatorias=[];proyectoActivo.convocatorias.push({nombre:'Nueva convocatoria',fechaRealizacion:'',fechaDeadline:'',enviado:false,estado:'pendiente'});guardar();renderConvocatorias();}
+function renderConvocatorias() {
+  if(!proyectoActivo)return;
+  const convs=proyectoActivo.convocatorias||[];
+  const grid=document.getElementById('conv-grid'),empty=document.getElementById('conv-empty');
+  if(!convs.length){grid.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  grid.innerHTML=convs.map((c,i)=>`<div class="conv-card"><div><div class="conv-field" style="margin-bottom:3px;"><label>NOMBRE</label></div><input type="text" value="${c.nombre}" onchange="updateConv(${i},'nombre',this.value)" style="font-size:15px;font-weight:600;background:transparent;border:none;color:var(--texto);width:100%;font-family:'Crimson Pro',serif;border-bottom:1px solid var(--gris-borde);padding:2px 0;"></div><div class="conv-field"><label>REALIZACIÓN</label><input type="text" value="${c.fechaRealizacion||''}" onchange="updateConv(${i},'fechaRealizacion',this.value)" placeholder="Ej: junio 2026" style="font-size:12px;padding:3px 5px;"></div><div class="conv-field"><label>DEADLINE</label><input type="text" value="${c.fechaDeadline||''}" onchange="updateConv(${i},'fechaDeadline',this.value)" placeholder="Ej: 15 mar 2026" style="font-size:12px;padding:3px 5px;"></div><div class="conv-field"><label>ESTADO</label><select onchange="updateConv(${i},'estado',this.value)" style="background:var(--gris-medio);border:1px solid var(--gris-borde);color:var(--texto);padding:3px 7px;font-family:'DM Mono',monospace;font-size:9px;"><option value="pendiente" ${c.estado==='pendiente'?'selected':''}>Pendiente</option><option value="enviado" ${c.estado==='enviado'?'selected':''}>Enviado</option><option value="aceptada" ${c.estado==='aceptada'?'selected':''}>Aceptada</option><option value="rechazada" ${c.estado==='rechazada'?'selected':''}>Rechazada</option></select></div><div class="conv-field"><label>MATERIAL</label><label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;color:${c.enviado?'var(--verde)':'var(--texto-suave)'};"><input type="checkbox" ${c.enviado?'checked':''} onchange="updateConv(${i},'enviado',this.checked)" style="width:auto;">${c.enviado?'Enviado':'No enviado'}</label></div><button class="btn-eliminar" onclick="eliminarConv(${i})">×</button></div>`).join('');
+}
+function updateConv(i,c,v){proyectoActivo.convocatorias[i][c]=v;guardar();if(c==='estado')renderConvocatorias();}
+function eliminarConv(i){proyectoActivo.convocatorias.splice(i,1);guardar();renderConvocatorias();}
+async function buscarConvocatorias() {
+  const btn=document.getElementById('btn-buscar-conv'),resEl=document.getElementById('conv-ia-resultado');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Buscando...';resEl.className='conv-ia-resultado visible';resEl.textContent='Buscando convocatorias activas...';
+  const p=proyectoActivo;
+  const prompt=`Buscá convocatorias, festivales y ferias de teatro actualmente activos (2025-2026) relevantes para esta obra:\n- Título: "${p.nombre}"\n- Género: ${p.genero||'no especificado'}\n- Formato: ${p.formato||'no especificado'}\n- Procedencia: ${p.procedencia||'no especificada'}\n- Fase: ${p.faseTipo==='gira'?'En gira':'En producción'}\nListá 6-8 opciones reales con nombre, país/ciudad, fechas y por qué es relevante.`;
+  try{const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{"type":"web_search_20250305","name":"web_search"}],messages:[{role:'user',content:prompt}]})});const data=await resp.json();resEl.textContent=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('\n')||'No se encontraron resultados.';}catch(e){resEl.textContent='Error al buscar.';}
+  btn.disabled=false;btn.innerHTML='✦ Buscar con IA';
+}
+
+// ── MODALES / TABS ────────────────────────────────────────────────────────────
+function abrirModalNuevo(){document.getElementById('modal-nuevo').classList.add('visible');setTimeout(()=>document.getElementById('nuevo-nombre').focus(),100);}
+function cerrarModal(id){document.getElementById(id).classList.remove('visible');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('visible');}));
+function cambiarTab(panel,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('activo'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('activo'));el.classList.add('activo');document.getElementById('panel-'+panel).classList.add('activo');}
+function cambiarVtab(panel,el){document.querySelectorAll('.vtab').forEach(t=>t.classList.remove('activo'));document.querySelectorAll('.vpanel').forEach(p=>p.classList.remove('activo'));el.classList.add('activo');document.getElementById('vpanel-'+panel).classList.add('activo');}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+proyectos = JSON.parse(localStorage.getItem('telon-v4') || '[]');
+perfil = JSON.parse(localStorage.getItem('telon-perfil') || '{}');
+actualizarSidebar();
+
+// ── LINKS EXTERNOS ────────────────────────────────────────────────────────────
+function agregarLink() {
+  const url = prompt('URL del link (Canva, Google Fotos, Drive, etc.):');
+  if (!url || !url.trim()) return;
+  const nombre = prompt('Nombre del link:') || url;
+  const h = proyectoActivo.hitos[hitoActivo];
+  if (!h.links) h.links = [];
+  h.links.push({ nombre: nombre.trim(), url: url.trim() });
+  guardar(); renderLinks(); renderHitos();
+}
+
+function renderLinks() {
+  const h = proyectoActivo.hitos[hitoActivo];
+  const lista = document.getElementById('links-lista');
+  if (!lista) return;
+  if (!h.links || !h.links.length) { lista.innerHTML = ''; return; }
+  lista.innerHTML = h.links.map((l, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--gris-medio);border:1px solid var(--gris-borde);padding:6px 10px;margin-bottom:4px;font-family:'DM Mono',monospace;font-size:10px;">
+      <span style="font-size:13px;">🔗</span>
+      <a href="${l.url}" target="_blank" rel="noopener" style="color:var(--dorado);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nombre}</a>
+      <button onclick="eliminarLink(${i})" style="background:none;border:none;color:var(--gris-borde);cursor:pointer;font-size:14px;padding:0 3px;" onmouseover="this.style.color='var(--rojo)'" onmouseout="this.style.color='var(--gris-borde)'">×</button>
+    </div>`).join('');
+}
+
+function eliminarLink(i) {
+  proyectoActivo.hitos[hitoActivo].links.splice(i, 1);
+  guardar(); renderLinks(); renderHitos();
+}
+
+// ── EXPORTAR EXCEL ────────────────────────────────────────────────────────────
+function exportarExcel() {
+  if (!proyectoActivo) return;
+  const wb = XLSX.utils.book_new();
+  const p = proyectoActivo;
+  const m = p.moneda || '€';
+
+  // Hoja 1: Presupuesto
+  const presuData = [['PRESUPUESTO DE PRODUCCIÓN - ' + p.nombre], [],
+    ['Concepto', 'Categoría', 'Base imponible', 'IRPF', 'IVA', 'Total', 'Pagado']];
+  (p.presupuesto?.items || []).forEach(it => {
+    const total = (parseFloat(it.base)||0) - (parseFloat(it.irpf)||0) + (parseFloat(it.iva)||0);
+    presuData.push([it.concepto, it.categoria, parseFloat(it.base)||0, parseFloat(it.irpf)||0, parseFloat(it.iva)||0, total, it.pagado ? 'Sí' : 'No']);
+  });
+  presuData.push([], ['VALOR DE TRABAJO']);
+  (p.vtrabajo || []).forEach(vt => {
+    presuData.push([vt.nombre, '', '', '', '', '']);
+    vt.items.forEach(it => presuData.push(['  ' + it.concepto, '', '', '', '', parseFloat(it.monto)||0]));
+  });
+  const pctImp = p.presupuesto?.pctImprevistos || 10;
+  presuData.push([], ['IMPREVISTOS (' + pctImp + '%)', '', '', '', '', p.presupuesto?.totalProduccion ? p.presupuesto.totalProduccion * pctImp / (100 + pctImp) : 0]);
+  presuData.push(['TOTAL PRODUCCIÓN', '', '', '', '', p.presupuesto?.totalProduccion || 0]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(presuData), 'Presupuesto');
+
+  // Hoja 2: Co-producción
+  const coprodData = [['CO-PRODUCCIÓN - ' + p.nombre], [],
+    ['Co-productor', 'Aportación económica', 'Valor de trabajo', 'Total aportado', '% del proyecto']];
+  const totalProd = p.presupuesto?.totalProduccion || 0;
+  (p.coproductores || []).forEach(cp => {
+    const aporte = cp ? (p.vtrabajo.find(v=>v.nombre===cp.nombre)?.items.reduce((s,i)=>s+(parseFloat(i.monto)||0),0)||0) + (parseFloat(cp.aportacionEconomica)||0) : 0;
+    const pct = totalProd > 0 ? Math.round(aporte / totalProd * 100) : 0;
+    coprodData.push([cp.nombre, parseFloat(cp.aportacionEconomica)||0, aporte - (parseFloat(cp.aportacionEconomica)||0), aporte, pct + '%']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(coprodData), 'Co-producción');
+
+  // Hoja 3: Financiación
+  const financData = [['PLAN DE FINANCIACIÓN - ' + p.nombre], [],
+    ['Fuente', 'Importe', '% del total', 'Sin IVA']];
+  (p.financiacion || []).forEach(f => {
+    const pct = totalProd > 0 ? Math.round((parseFloat(f.monto)||0) / totalProd * 100) : 0;
+    financData.push([f.fuente, parseFloat(f.monto)||0, pct + '%', f.sinIva ? 'Sí' : 'No']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(financData), 'Financiación');
+
+  // Hoja 4: Bolos
+  const bolosData = [['GASTOS POR FUNCIÓN / BOLO - ' + p.nombre], [],
+    ['Función', 'Fecha', 'Caché/Ingresos', 'Total gastos', 'Resultado neto']];
+  (p.bolos || []).forEach(b => {
+    const totalG = b.items.reduce((s,it) => s + (parseFloat(it.monto)||0), 0);
+    bolosData.push([b.nombre, b.fecha, parseFloat(b.cache)||0, totalG, (parseFloat(b.cache)||0) - totalG]);
+    bolosData.push(['  Concepto', 'Categoría', 'Tipo', 'Monto', '']);
+    b.items.forEach(it => bolosData.push(['  ' + it.concepto, it.categoria, it.tipo, parseFloat(it.monto)||0, '']));
+    bolosData.push([]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bolosData), 'Bolos');
+
+  // Hoja 5: Hitos
+  const hitosData = [['HITOS DE PRODUCCIÓN - ' + p.nombre], [],
+    ['Hito', 'Estado', 'Notas']];
+  p.hitos.forEach(h => hitosData.push([h.nombre, h.estado, h.notas || '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hitosData), 'Hitos');
+
+  // Hoja 6: Giras
+  if ((p.giras || []).length) {
+    const girasData = [['GIRAS Y FUNCIONES - ' + p.nombre], [],
+      ['Localidad', 'Fecha', 'Teatro', 'Contrato', 'Nº fn', 'Tipo ingreso', 'Distribuidora', 'Butacas', 'P. entrada', 'Caché']];
+    p.giras.forEach(g => girasData.push([g.localidad, g.fecha, g.teatro, g.contrato, g.nFn, g.tipoIngreso, g.distribuidora, g.butacas, g.precio, g.cache]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(girasData), 'Giras');
+  }
+
+  XLSX.writeFile(wb, `Telon-${p.nombre.replace(/[^a-zA-Z0-9]/g,'-')}.xlsx`);
+}
+
+// ── EXPORTAR PDF ──────────────────────────────────────────────────────────────
+function exportarPDF() {
+  if (!proyectoActivo) return;
+  const p = proyectoActivo;
+  const m = p.moneda || '€';
+  const fmt = n => m + parseFloat(n||0).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    body{font-family:Georgia,serif;color:#1a1a1a;max-width:800px;margin:0 auto;padding:40px;}
+    h1{font-size:36px;font-style:italic;border-bottom:3px solid #c0392b;padding-bottom:10px;margin-bottom:6px;}
+    h2{font-size:16px;font-family:monospace;letter-spacing:3px;text-transform:uppercase;color:#c0392b;margin:28px 0 10px;border-bottom:1px solid #ddd;padding-bottom:4px;}
+    h3{font-size:14px;font-family:monospace;color:#555;margin:16px 0 6px;}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;}
+    th{background:#0a0a0a;color:white;font-family:monospace;font-size:10px;letter-spacing:1px;padding:7px 8px;text-align:left;}
+    td{padding:6px 8px;border-bottom:1px solid #eee;}
+    .total{background:#f5f5f5;font-weight:bold;}
+    .rojo{color:#c0392b;font-weight:bold;}
+    .dorado{color:#c9a84c;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-family:monospace;}
+    .pendiente{background:#eee;color:#888;}
+    .en-proceso{background:#fff3cd;color:#856404;}
+    .listo{background:#d4edda;color:#155724;}
+    .meta{font-family:monospace;font-size:11px;color:#888;margin-bottom:20px;}
+    .chip{display:inline-block;background:#f5f5f5;padding:3px 10px;margin:2px;font-size:12px;font-family:monospace;}
+    @media print{body{padding:20px;}}
+  </style></head><body>`;
+
+  html += `<h1>${p.nombre}</h1>`;
+  html += `<div class="meta">`;
+  if (p.genero) html += `<span class="chip">GÉNERO: ${p.genero}</span>`;
+  if (p.formato) html += `<span class="chip">FORMATO: ${p.formato}</span>`;
+  if (p.duracion) html += `<span class="chip">DURACIÓN: ${p.duracion} min</span>`;
+  if (p.publico) html += `<span class="chip">PÚBLICO: ${p.publico}</span>`;
+  if (p.procedencia) html += `<span class="chip">PROCEDENCIA: ${p.procedencia}</span>`;
+  html += `<span class="chip">FASE: ${p.faseTipo === 'gira' ? 'En gira' : 'En producción'}${p.faseFecha ? ' · ' + p.faseFecha : ''}</span>`;
+  html += `</div>`;
+
+  // Presupuesto
+  html += `<h2>Presupuesto de Producción</h2>`;
+  const CATS = ['Personal','Materiales','Comunicación / Publicidad','Derechos artísticos','Diseño gráfico','Gestión y producción','Otros'];
+  CATS.forEach(cat => {
+    const items = (p.presupuesto?.items || []).filter(it => it.categoria === cat);
+    if (!items.length) return;
+    html += `<h3>${cat}</h3><table><tr><th>Concepto</th><th>Base imponible</th><th>IRPF</th><th>IVA</th><th>Total</th></tr>`;
+    let sub = 0;
+    items.forEach(it => {
+      const tot = (parseFloat(it.base)||0) - (parseFloat(it.irpf)||0) + (parseFloat(it.iva)||0);
+      sub += tot;
+      html += `<tr><td>${it.concepto}</td><td>${fmt(it.base)}</td><td style="color:#e74c3c">${it.irpf ? fmt(it.irpf) : '—'}</td><td style="color:#27ae60">${it.iva ? fmt(it.iva) : '—'}</td><td>${fmt(tot)}</td></tr>`;
+    });
+    html += `<tr class="total"><td colspan="4" style="text-align:right">Subtotal ${cat}</td><td class="dorado">${fmt(sub)}</td></tr></table>`;
+  });
+
+  if ((p.vtrabajo || []).length) {
+    html += `<h3>Valor de Trabajo</h3><table><tr><th>Persona/Compañía</th><th>Concepto</th><th>Monto</th></tr>`;
+    p.vtrabajo.forEach(vt => {
+      vt.items.forEach((it, i) => {
+        html += `<tr><td>${i === 0 ? vt.nombre : ''}</td><td>${it.concepto}</td><td>${fmt(it.monto)}</td></tr>`;
+      });
+    });
+    html += '</table>';
+  }
+
+  html += `<table><tr class="total"><td><strong>TOTAL PRODUCCIÓN</strong></td><td class="rojo" style="text-align:right;font-size:18px;">${fmt(p.presupuesto?.totalProduccion || 0)}</td></tr></table>`;
+
+  // Coproducción
+  if ((p.coproductores || []).length) {
+    html += `<h2>Co-producción</h2><table><tr><th>Co-productor</th><th>Aportación económica</th><th>Valor de trabajo</th><th>Total</th><th>%</th></tr>`;
+    const totalProd = p.presupuesto?.totalProduccion || 0;
+    p.coproductores.forEach(cp => {
+      const vt = p.vtrabajo.find(v => v.nombre === cp.nombre);
+      const vtMonto = vt ? vt.items.reduce((s,i) => s + (parseFloat(i.monto)||0), 0) : 0;
+      const total = vtMonto + (parseFloat(cp.aportacionEconomica)||0);
+      const pct = totalProd > 0 ? Math.round(total / totalProd * 100) : 0;
+      html += `<tr><td>${cp.nombre}</td><td>${fmt(cp.aportacionEconomica)}</td><td>${fmt(vtMonto)}</td><td class="dorado">${fmt(total)}</td><td><strong>${pct}%</strong></td></tr>`;
+    });
+    const totalAportado = p.coproductores.reduce((s, cp) => { const vt = p.vtrabajo.find(v => v.nombre === cp.nombre); const vtM = vt ? vt.items.reduce((ss,i) => ss + (parseFloat(i.monto)||0), 0) : 0; return s + vtM + (parseFloat(cp.aportacionEconomica)||0); }, 0);
+    const restante = Math.max(0, (p.presupuesto?.totalProduccion || 0) - totalAportado);
+    html += `<tr class="total"><td colspan="3">Restante a financiar</td><td class="rojo">${fmt(restante)}</td><td class="rojo">${(p.presupuesto?.totalProduccion || 0) > 0 ? Math.round(restante / p.presupuesto.totalProduccion * 100) : 0}%</td></tr></table>`;
+  }
+
+  // Financiación
+  if ((p.financiacion || []).length) {
+    html += `<h2>Plan de Financiación</h2><table><tr><th>Fuente</th><th>Importe</th><th>%</th><th>Sin IVA</th></tr>`;
+    const totalProd = p.presupuesto?.totalProduccion || 0;
+    p.financiacion.forEach(f => {
+      const pct = totalProd > 0 ? Math.round((parseFloat(f.monto)||0) / totalProd * 100) : 0;
+      html += `<tr><td>${f.fuente}</td><td>${fmt(f.monto)}</td><td>${pct}%</td><td>${f.sinIva ? 'Sí' : 'No'}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  // Hitos
+  html += `<h2>Hitos de Producción</h2><table><tr><th>Hito</th><th>Estado</th><th>Notas</th></tr>`;
+  p.hitos.forEach(h => {
+    const badge = h.estado === 'listo' ? 'listo' : h.estado === 'en-proceso' ? 'en-proceso' : 'pendiente';
+    const label = h.estado === 'listo' ? 'Listo ✓' : h.estado === 'en-proceso' ? 'En proceso' : 'Pendiente';
+    html += `<tr><td>${h.nombre}</td><td><span class="badge ${badge}">${label}</span></td><td style="font-size:12px;color:#666;">${h.notas || ''}</td></tr>`;
+  });
+  html += '</table>';
+
+  // Giras
+  if ((p.giras || []).length) {
+    html += `<h2>Giras y Funciones</h2><table><tr><th>Localidad</th><th>Fecha</th><th>Teatro</th><th>Contrato</th><th>Tipo</th><th>Caché</th></tr>`;
+    p.giras.forEach(g => {
+      html += `<tr><td>${g.localidad}</td><td>${g.fecha}</td><td>${g.teatro}</td><td>${g.contrato}</td><td>${g.tipoIngreso}</td><td>${fmt(g.cache)}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  html += `<p style="font-family:monospace;font-size:10px;color:#aaa;text-align:center;margin-top:40px;border-top:1px solid #eee;padding-top:12px;">Generado por Telón — Metodología Praxis · ${new Date().toLocaleDateString('es-ES')}</p>`;
+  html += '</body></html>';
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+</script>
+</body>
+</html>
